@@ -6,7 +6,6 @@ import com.cloud_computing.mariadb.entity.User;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.responsitory.UserRepository;
 import com.cloud_computing.mariadb.service.AuthService;
-import com.cloud_computing.mariadb.util.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.security.crypto.password.PasswordEncoder;

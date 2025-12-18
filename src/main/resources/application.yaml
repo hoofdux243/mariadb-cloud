@@ -6,8 +6,19 @@ spring:
   application:
     name: mariadb
   datasource:
-    url: "jdbc:mysql://database-1.cm8qkmiwivrg.us-east-1.rds.amazonaws.com:3306/coredb"
-    username: admin
-    password: 12345678
+    primary:
+      jdbc-url: "jdbc:mysql://database-1.cm8qkmiwivrg.us-east-1.rds.amazonaws.com:3306/coredb"
+      username: admin
+      password: 12345678
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    secondary:
+      jdbc-url: "jdbc:mariadb://database-2.cm8qkmiwivrg.us-east-1.rds.amazonaws.com:3306/"
+      username: admin
+      password: 12345678
+      driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 jwt:
   signerKey: "f267b9918f787ae56447c9311ee8804e87cb512171fbe28a88ae4bd631ab3450"

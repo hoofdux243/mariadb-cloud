@@ -37,4 +37,11 @@ public class DatabaseMember {
     @Column(name = "created_at")
     private Instant createdAt;
 
+    @Column(name = "username", nullable = false, length = 100)
+    private String username;
+
+    @Lob
+    @Column(name = "password", nullable = false)
+    private String password;
+
 }
