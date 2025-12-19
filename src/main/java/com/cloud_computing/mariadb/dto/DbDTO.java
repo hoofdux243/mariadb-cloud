@@ -17,7 +17,6 @@ public class DbDTO {
     String name;
     Long projectId;
     String projectName;
-    Long userId;
     String hostname;
     Integer port;
     Instant createdAt;

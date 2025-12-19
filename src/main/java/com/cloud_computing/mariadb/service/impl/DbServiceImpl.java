@@ -4,6 +4,7 @@ import com.cloud_computing.mariadb.dto.DbDTO;
 import com.cloud_computing.mariadb.entity.*;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
+import com.cloud_computing.mariadb.exception.UnauthorizedException;
 import com.cloud_computing.mariadb.responsitory.*;
 import com.cloud_computing.mariadb.service.DbService;
 import com.cloud_computing.mariadb.util.SecurityUtils;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -46,11 +49,13 @@ public class DbServiceImpl implements DbService {
     @Override
     @Transactional
     public DbDTO createDb(DbDTO request) {
+        if(!projectRepository.existsByUser_UsernameAndId(SecurityUtils.getUsername(), request.getProjectId())){
+            throw new UnauthorizedException("Không có quyền tạo database trong project của người khác.");
+        }
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng."));
         Project project = projectRepository.findById(request.getProjectId()).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy project"));
         if(dbRepository.existsByName(request.getName()))
-            throw new BadRequestException("Database đã tồn tại");
-        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user"));
-
+            throw new BadRequestException("Tên database đã tồn tại");
         String hostname = extractHostname(mariadbUrl);
         Integer port = extractPort(mariadbUrl);
         createDbOnMariaDb(request.getName());
@@ -93,6 +98,21 @@ public class DbServiceImpl implements DbService {
                         .connectionString(buildConnectionString(hostname, port, request.getName(), username, password))
                         .build())
                 .build();
+    }
+
+    @Override
+    public List<DbDTO> getDbsByProjectId(Long projectId) {
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
+        List<Db> dbs = dbRepository.findAllByProject_Id(projectId);
+        return dbs.stream().map(
+                db -> {
+                    return DbDTO.builder()
+                            .id(db.getId())
+                            .name(db.getName())
+                            .createdAt(db.getCreatedAt())
+                            .build();
+                }
+        ).collect(Collectors.toList());
     }
 
     private void createDbOnMariaDb(String dbName){

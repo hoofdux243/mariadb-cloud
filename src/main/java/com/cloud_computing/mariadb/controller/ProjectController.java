@@ -3,6 +3,7 @@ package com.cloud_computing.mariadb.controller;
 import com.cloud_computing.mariadb.dto.ProjectDTO;
 import com.cloud_computing.mariadb.dto.response.APIResponse;
 import com.cloud_computing.mariadb.dto.response.APIResponseMessage;
+import com.cloud_computing.mariadb.service.DbService;
 import com.cloud_computing.mariadb.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -18,12 +19,14 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectController {
     @Autowired
     ProjectService projectService;
+    @Autowired
+    DbService dbService;
 
     @GetMapping
     public ResponseEntity<?> getProjects() {
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.OK.value())
-                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.name())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
                 .data(projectService.getProjects())
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
@@ -33,7 +36,7 @@ public class ProjectController {
     public ResponseEntity<?> createProject(@RequestBody ProjectDTO projectDTO) {
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.CREATED.value())
-                .message(APIResponseMessage.SUCCESSFULLY_CREATED.name())
+                .message(APIResponseMessage.SUCCESSFULLY_CREATED.getMessage())
                 .data(projectService.createProject(projectDTO))
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
@@ -44,8 +47,18 @@ public class ProjectController {
         projectService.deleteProject(projectId);
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.NO_CONTENT.value())
-                .message(APIResponseMessage.SUCCESSFULLY_DELETED.name())
+                .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping("/{projectId}/dbs")
+    public ResponseEntity<?> getDBs(@PathVariable Long projectId) {
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(dbService.getDbsByProjectId(projectId))
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 }

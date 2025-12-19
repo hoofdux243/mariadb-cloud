@@ -28,7 +28,7 @@ public class AuthController {
         UserDTO userDTO = authService.register(user);
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.CREATED.value())
-                .message(APIResponseMessage.SUCCESSFULLY_CREATED.name())
+                .message(APIResponseMessage.SUCCESSFULLY_CREATED.getMessage())
                 .data(userDTO)
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
@@ -39,7 +39,7 @@ public class AuthController {
         AuthResponse authResponse = authService.login(user);
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.OK.value())
-                .message(APIResponseMessage.SUCCESSFULLY_LOGIN.name())
+                .message(APIResponseMessage.SUCCESSFULLY_LOGIN.getMessage())
                 .data(authResponse)
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);

@@ -23,7 +23,7 @@ public class DbController {
     ResponseEntity<?> createDb(@RequestBody DbDTO dbDTO) {
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.CREATED.value())
-                .message(APIResponseMessage.SUCCESSFULLY_CREATED.name())
+                .message(APIResponseMessage.SUCCESSFULLY_CREATED.getMessage())
                 .data(dbService.createDb(dbDTO))
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
