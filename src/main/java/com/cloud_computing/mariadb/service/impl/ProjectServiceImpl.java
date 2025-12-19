@@ -5,6 +5,7 @@ import com.cloud_computing.mariadb.entity.Project;
 import com.cloud_computing.mariadb.entity.User;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
+import com.cloud_computing.mariadb.exception.UnauthorizedException;
 import com.cloud_computing.mariadb.responsitory.ProjectRepository;
 import com.cloud_computing.mariadb.responsitory.UserRepository;
 import com.cloud_computing.mariadb.service.ProjectService;
@@ -55,7 +56,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public List<ProjectDTO> getProjects() {
         User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
-        List<Project> projects = projectRepository.findAllByUser_Id(user.getId());
+        List<Project> projects = projectRepository.findAllByUser_IdOrderByCreatedAtAsc(user.getId());
         return projects.stream()
                 .map(project -> {
                     return ProjectDTO.builder()
