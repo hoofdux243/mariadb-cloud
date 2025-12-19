@@ -22,12 +22,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserDTO register(UserDTO loginRequest) {
-        if(userRepository.existsByUsername(loginRequest.getUsername()))
+        if (userRepository.existsByUsername(loginRequest.getUsername()))
             throw new BadRequestException("Tên tài khoản đã tồn tại");
+        if (loginRequest.getName() == null || loginRequest.getPassword().trim().isEmpty())
+            throw new BadRequestException("Tên người dùng không được bỏ trống.");
         User user = User.builder()
                 .username(loginRequest.getUsername())
                 .password(passwordEncoder.encode(loginRequest.getPassword()))
-                .name(loginRequest.getUsername())
+                .name(loginRequest.getName())
                 .build();
         userRepository.save(user);
         return loginRequest;
@@ -39,7 +41,7 @@ public class AuthServiceImpl implements AuthService {
         if(!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())){
             throw new BadRequestException("Mật khẩu không đúng!");
         }
-        var token = jwtService.generateToken(user.getUsername());
+        var token = jwtService.generateToken(user);
         return AuthResponse.builder().token(token).build();
     }
 }

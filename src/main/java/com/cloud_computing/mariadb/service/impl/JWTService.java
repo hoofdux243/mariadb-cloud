@@ -1,5 +1,7 @@
 package com.cloud_computing.mariadb.service.impl;
 
+import com.cloud_computing.mariadb.dto.UserDTO;
+import com.cloud_computing.mariadb.entity.User;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -19,11 +21,12 @@ public class JWTService {
     @Value("${jwt.signerKey}")
     protected String SIGN_KEY;
 
-    public String generateToken(String username) {
+    public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(username)
+                .subject(user.getUsername())
+                .claim("name", user.getName())
                 .issuer("mariadb.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()))
