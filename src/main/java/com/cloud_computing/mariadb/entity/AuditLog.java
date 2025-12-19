@@ -16,6 +16,7 @@ import java.time.Instant;
 public class AuditLog {
     @Id
     @Column(name = "id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -33,4 +34,8 @@ public class AuditLog {
     @Column(name = "created_at")
     private Instant createdAt;
 
+    @PrePersist
+    public void prePersist(){
+        this.createdAt = Instant.now();
+    }
 }

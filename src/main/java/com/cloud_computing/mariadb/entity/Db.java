@@ -1,8 +1,7 @@
 package com.cloud_computing.mariadb.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -13,9 +12,13 @@ import java.time.Instant;
 @Setter
 @Entity
 @Table(name = "dbs")
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Db {
     @Id
     @Column(name = "id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -24,7 +27,7 @@ public class Db {
     private Project project;
 
     @Column(name = "db_name", nullable = false, length = 100)
-    private String dbName;
+    private String name;
 
     @ColumnDefault("'ACTIVE'")
     @Lob
@@ -41,4 +44,9 @@ public class Db {
     @Column(name = "port", nullable = false)
     private Integer port;
 
+    @PrePersist
+    public void prePersist()
+    {
+        createdAt = Instant.now();
+    }
 }
