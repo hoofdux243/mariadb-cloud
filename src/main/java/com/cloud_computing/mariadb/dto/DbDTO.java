@@ -17,7 +17,6 @@ public class DbDTO {
     String name;
     Long projectId;
     String projectName;
-    String status;
     Instant createdAt;
     CredentialInfo credentialInfo;
 

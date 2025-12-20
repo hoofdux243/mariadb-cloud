@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ServerErrorException;
 
 import java.nio.file.AccessDeniedException;
 
@@ -55,6 +56,7 @@ public class ExceptionController {
                 .build();
         return new ResponseEntity<>(exceptionResponse, HttpStatus.FORBIDDEN);
     }
+
 
     @ExceptionHandler
     public ResponseEntity<?> handlerException(Exception e) {

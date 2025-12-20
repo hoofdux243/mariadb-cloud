@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DbMemberRepository extends JpaRepository<DbMember, Long> {
-    List<DbMember> findByUser_Id(Long userId);
+    List<DbMember> findAllByUser_Id(Long userId);
     Optional<DbMember> findByIdAndUser_Id(Long id, Long userId);
+    List<DbMember> findAllByDb_Id(Long dbId);
 }

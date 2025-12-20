@@ -3,7 +3,6 @@ package com.cloud_computing.mariadb.service.impl;
 import com.cloud_computing.mariadb.dto.DbDTO;
 import com.cloud_computing.mariadb.entity.*;
 import com.cloud_computing.mariadb.entity.enums.DbRole;
-import com.cloud_computing.mariadb.entity.enums.DbStatus;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
 import com.cloud_computing.mariadb.exception.UnauthorizedException;
@@ -67,9 +66,8 @@ public class DbServiceImpl implements DbService {
         Db db = dbRepository.save(Db.builder()
                 .project(project)
                 .name(request.getName())
-                    .hostname(hostname)
-                    .port(port)
-                    .status(DbStatus.ACTIVE.name())
+                .hostname(hostname)
+                .port(port)
                 .build());
 
         DbUser dbUser = dbUserRepository.save(DbUser.builder()
@@ -110,7 +108,6 @@ public class DbServiceImpl implements DbService {
                     return DbDTO.builder()
                             .id(db.getId())
                             .name(db.getName())
-                            .status(db.getStatus())
                             .createdAt(db.getCreatedAt())
                             .build();
                 }
@@ -120,15 +117,15 @@ public class DbServiceImpl implements DbService {
     @Override
     public List<DbDTO> getDbs() {
         User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
-        List<DbMember> dbms = dbMemberRepository.findByUser_Id(user.getId());
-        return dbms.stream().map(dbm ->{
-            return DbDTO.builder()
-                    .id(dbm.getDb().getId())
-                    .name(dbm.getDb().getName())
-                    .projectName(dbm.getDb().getProject().getName())
-                    .status(dbm.getDb().getStatus())
-                    .createdAt(dbm.getDb().getCreatedAt())
-                    .build();
+        List<DbMember> dbms = dbMemberRepository.findAllByUser_Id(user.getId());
+        return dbms.stream()
+                .map(dbm ->{
+                    return DbDTO.builder()
+                            .id(dbm.getDb().getId())
+                            .name(dbm.getDb().getName())
+                            .projectName(dbm.getDb().getProject().getName())
+                            .createdAt(dbm.getDb().getCreatedAt())
+                            .build();
         }).collect(Collectors.toList());
     }
 
@@ -142,7 +139,6 @@ public class DbServiceImpl implements DbService {
                 .id(id)
                 .name(dbm.getDb().getName())
                 .projectName(dbm.getDb().getProject().getName())
-                .status(dbm.getDb().getStatus())
                 .createdAt(dbm.getDb().getCreatedAt())
                 .credentialInfo(DbDTO.CredentialInfo.builder()
                         .hostname(dbm.getDb().getHostname())
@@ -157,6 +153,87 @@ public class DbServiceImpl implements DbService {
                         .build())
                 .build();
     }
+
+    @Override
+    @Transactional
+    public void deleteDb(Long id) {
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user"));
+        Db db = dbRepository.findById(id).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
+
+        DbMember dbm = dbMemberRepository.findByIdAndUser_Id(id, user.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này."));
+        if (!DbRole.OWNER.name().equals(dbm.getRole()))
+            throw new UnauthorizedException("Bạn không có quyền xóa database này.");
+
+        if (!dbRepository.existsById(db.getId()))
+            throw new BadRequestException("Database không tồn tại.");
+
+        try {
+            dropDatabaseOnMariaDb(db.getName());
+            dropAllUsersOnMariaDB(db.getName());
+            List<DbMember> dbms = dbMemberRepository.findAllByDb_Id(id);
+            dbMemberRepository.deleteAll(dbms);
+
+            List<DbUser> dbus = dbUserRepository.findAllByDb_Id(id);
+            dbUserRepository.deleteAll(dbus);
+            dbRepository.deleteById(id);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private void dropDatabaseOnMariaDb(String dbName){
+        try {
+            String sql = String.format("DROP DATABASE IF EXISTS `%s`", dbName);
+            mariadbJdbcTemplate.execute(sql);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+    private void dropAllUsersOnMariaDB(String dbName) {
+        try {
+            String getUsersSql = String.format(
+                    "SELECT DISTINCT User FROM mysql.db WHERE Db = '%s'", dbName.replace("'", "''")
+            );
+            List<String> users = mariadbJdbcTemplate.queryForList(getUsersSql, String.class);
+            if (users.isEmpty()) {
+                return;
+            }
+            for (String user : users) {
+                try {
+                    String dropUserSql = String.format("DROP USER IF EXISTS '%s'@'%%'", user);
+                    mariadbJdbcTemplate.execute(dropUserSql);
+                } catch (Exception e) {
+                    throw new RuntimeException(e.getMessage());
+                }
+            }
+            mariadbJdbcTemplate.execute("FLUSH PRIVILEGES");
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+//
+//    private void revokeAllPrivileges(String dbName) {
+//        try {
+//            String getUsersSql = String.format(
+//                    "SELECT DISTINCT User FROM mysql.db WHERE Db = '%s'",
+//                    dbName
+//            );
+//            List<String> users = mariadbJdbcTemplate.queryForList(getUsersSql, String.class);
+//
+//            for (String user : users) {
+//                String revokeSql = String.format(
+//                        "REVOKE ALL PRIVILEGES ON `%s`.* FROM '%s'@'%%'",
+//                        dbName, user
+//                );
+//                mariadbJdbcTemplate.execute(revokeSql);
+//            }
+//            mariadbJdbcTemplate.execute("FLUSH PRIVILEGES");
+//        } catch (Exception e) {
+//            throw new RuntimeException("Revoke quyền không thành công: " + e.getMessage());
+//        }
+//
+//    }
 
     private void createDbOnMariaDb(String dbName){
         try {

@@ -43,6 +43,16 @@ public class DbController {
                 .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
                 .data(dbService.getDb(dbId))
                 .build();
-        return new ResponseEntity<>(apiResponse, HttpStatus.OK);    }
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{dbId}")
+    ResponseEntity<?> deleteDbById(@PathVariable Long dbId) {
+        dbService.deleteDb(dbId);
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.NO_CONTENT.value())
+                .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.NO_CONTENT);    }
 
 }

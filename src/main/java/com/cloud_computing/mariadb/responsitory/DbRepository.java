@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface DbRepository extends JpaRepository<Db, Long> {
     Boolean existsByName(String name);
+    Boolean existsByProject_Id(Long projectId);
     List<Db> findAllByProject_Id(Long projectId);
 }

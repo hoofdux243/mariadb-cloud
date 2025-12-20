@@ -29,10 +29,6 @@ public class Db {
     @Column(name = "db_name", nullable = false, length = 100)
     private String name;
 
-    @ColumnDefault("'ACTIVE'")
-    @Lob
-    @Column(name = "status")
-    private String status;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at")

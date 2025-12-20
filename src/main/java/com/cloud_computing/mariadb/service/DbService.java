@@ -9,4 +9,5 @@ public interface DbService {
     List<DbDTO> getDbsByProjectId(Long projectId);
     List<DbDTO> getDbs();
     DbDTO getDb(Long id);
+    void deleteDb(Long id);
 }
