@@ -2,6 +2,8 @@ package com.cloud_computing.mariadb.service.impl;
 
 import com.cloud_computing.mariadb.dto.DbDTO;
 import com.cloud_computing.mariadb.entity.*;
+import com.cloud_computing.mariadb.entity.enums.DbRole;
+import com.cloud_computing.mariadb.entity.enums.DbStatus;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
 import com.cloud_computing.mariadb.exception.UnauthorizedException;
@@ -9,7 +11,6 @@ import com.cloud_computing.mariadb.responsitory.*;
 import com.cloud_computing.mariadb.service.DbService;
 import com.cloud_computing.mariadb.util.SecurityUtils;
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -68,7 +69,7 @@ public class DbServiceImpl implements DbService {
                 .name(request.getName())
                     .hostname(hostname)
                     .port(port)
-                    .status("ACTIVE")
+                    .status(DbStatus.ACTIVE.name())
                 .build());
 
         DbUser dbUser = dbUserRepository.save(DbUser.builder()
@@ -81,7 +82,7 @@ public class DbServiceImpl implements DbService {
         DbMember dbMember = dbMemberRepository.save(DbMember.builder()
                 .db(db)
                 .user(user)
-                .role("OWNER")
+                .role(DbRole.OWNER.name())
                 .build());
 
         return DbDTO.builder()
@@ -89,10 +90,10 @@ public class DbServiceImpl implements DbService {
                 .name(db.getName())
                 .projectId(project.getId())
                 .projectName(project.getName())
-                .hostname(hostname)
-                .port(port)
                 .createdAt(db.getCreatedAt())
                 .credentialInfo(DbDTO.CredentialInfo.builder()
+                        .hostname(hostname)
+                        .port(port)
                         .username(username)
                         .password(password)
                         .connectionString(buildConnectionString(hostname, port, request.getName(), username, password))
@@ -109,10 +110,52 @@ public class DbServiceImpl implements DbService {
                     return DbDTO.builder()
                             .id(db.getId())
                             .name(db.getName())
+                            .status(db.getStatus())
                             .createdAt(db.getCreatedAt())
                             .build();
                 }
         ).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DbDTO> getDbs() {
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
+        List<DbMember> dbms = dbMemberRepository.findByUser_Id(user.getId());
+        return dbms.stream().map(dbm ->{
+            return DbDTO.builder()
+                    .id(dbm.getDb().getId())
+                    .name(dbm.getDb().getName())
+                    .projectName(dbm.getDb().getProject().getName())
+                    .status(dbm.getDb().getStatus())
+                    .createdAt(dbm.getDb().getCreatedAt())
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public DbDTO getDb(Long id) {
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
+        DbMember dbm = dbMemberRepository.findByIdAndUser_Id(id,user.getId()).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
+        DbUser dbu = dbUserRepository.findByUser_IdAndDb_Id(user.getId(),id).orElseThrow(() -> new UnauthorizedException("Không tìm thấy database credential."));
+
+        return DbDTO.builder()
+                .id(id)
+                .name(dbm.getDb().getName())
+                .projectName(dbm.getDb().getProject().getName())
+                .status(dbm.getDb().getStatus())
+                .createdAt(dbm.getDb().getCreatedAt())
+                .credentialInfo(DbDTO.CredentialInfo.builder()
+                        .hostname(dbm.getDb().getHostname())
+                        .port(dbm.getDb().getPort())
+                        .username(dbu.getUsername())
+                        .password(dbu.getPassword())
+                        .connectionString(buildConnectionString(dbu.getDb().getHostname()
+                                                                ,dbu.getDb().getPort()
+                                                                ,dbu.getDb().getName()
+                                                                ,dbu.getUsername()
+                                                                ,dbu.getPassword()))
+                        .build())
+                .build();
     }
 
     private void createDbOnMariaDb(String dbName){

@@ -17,8 +17,7 @@ public class DbDTO {
     String name;
     Long projectId;
     String projectName;
-    String hostname;
-    Integer port;
+    String status;
     Instant createdAt;
     CredentialInfo credentialInfo;
 
@@ -27,6 +26,8 @@ public class DbDTO {
     @FieldDefaults(level = AccessLevel.PRIVATE)
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class CredentialInfo {
+        String hostname;
+        Integer port;
         String username;
         String password;
         String connectionString;

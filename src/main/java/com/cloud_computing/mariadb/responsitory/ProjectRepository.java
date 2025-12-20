@@ -12,7 +12,6 @@ import java.util.Optional;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
     boolean existsByUser_IdAndName(Long userId, String name);
-
     boolean existsByUser_UsernameAndId(String username, Long id);
     Optional<Project> findByUser_UsernameAndId(String username, Long id);
     List<Project> findAllByUser_IdOrderByCreatedAtAsc(Long id);

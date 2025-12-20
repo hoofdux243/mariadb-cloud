@@ -32,6 +32,16 @@ public class ProjectController {
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 
+    @GetMapping("/{projectId}")
+    public ResponseEntity<?> getProjectById(@PathVariable Long projectId) {
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(projectService.getProject(projectId))
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+    }
+
     @PostMapping
     public ResponseEntity<?> createProject(@RequestBody ProjectDTO projectDTO) {
         APIResponse apiResponse = APIResponse.builder()

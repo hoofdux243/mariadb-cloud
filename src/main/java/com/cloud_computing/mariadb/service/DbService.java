@@ -7,4 +7,6 @@ import java.util.List;
 public interface DbService {
     DbDTO createDb(DbDTO dbDTO);
     List<DbDTO> getDbsByProjectId(Long projectId);
+    List<DbDTO> getDbs();
+    DbDTO getDb(Long id);
 }

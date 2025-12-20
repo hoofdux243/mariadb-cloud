@@ -8,10 +8,7 @@ import com.cloud_computing.mariadb.service.DbService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/dbs")
@@ -28,4 +25,24 @@ public class DbController {
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.CREATED);
     }
+
+    @GetMapping
+    ResponseEntity<?> findAllDbs() {
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(dbService.getDbs())
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+    }
+
+    @GetMapping("/{dbId}")
+    ResponseEntity<?> findDbById(@PathVariable Long dbId) {
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(dbService.getDb(dbId))
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);    }
+
 }

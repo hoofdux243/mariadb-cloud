@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,5 +67,15 @@ public class ProjectServiceImpl implements ProjectService {
                             .createdAt(project.getCreatedAt())
                             .build();
                 }).collect(Collectors.toList());
+    }
+
+    @Override
+    public ProjectDTO getProject(Long projectId) {
+        Project project = projectRepository.findByUser_UsernameAndId(SecurityUtils.getUsername(),projectId).orElseThrow(() -> new BadRequestException("Không tìm thấy project."));
+        return ProjectDTO.builder()
+                .id(project.getId())
+                .name(project.getName())
+                .createdAt(project.getCreatedAt())
+                .build();
     }
 }
