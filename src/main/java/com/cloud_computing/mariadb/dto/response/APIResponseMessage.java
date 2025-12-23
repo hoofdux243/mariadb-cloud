@@ -7,7 +7,9 @@ public enum APIResponseMessage {
     SUCCESSFULLY_RETRIEVED("Lấy dữ liệu thành công."),
     SUCCESSFULLY_LOGIN("Đăng nhập thành công."),
     SUCCESSFULLY_REGISTER("Đăng ký thành công."),
-    SUCCESSFULLY_LOGOUT("Đăng xuất thành công.");
+    SUCCESSFULLY_LOGOUT("Đăng xuất thành công."),
+    SUCCESSFULLY_MAIL("Gửi mail thành công."),
+    SUCCESSFULLY_JOIN("Join database thành công.");
 
     final String message;
     APIResponseMessage(String message) {

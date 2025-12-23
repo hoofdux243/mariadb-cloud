@@ -4,7 +4,7 @@ import com.cloud_computing.mariadb.dto.UserDTO;
 import com.cloud_computing.mariadb.dto.response.AuthResponse;
 import com.cloud_computing.mariadb.entity.User;
 import com.cloud_computing.mariadb.exception.BadRequestException;
-import com.cloud_computing.mariadb.responsitory.UserRepository;
+import com.cloud_computing.mariadb.repository.UserRepository;
 import com.cloud_computing.mariadb.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -26,6 +26,10 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Tên tài khoản đã tồn tại");
         if (loginRequest.getName() == null || loginRequest.getPassword().trim().isEmpty())
             throw new BadRequestException("Tên người dùng không được bỏ trống.");
+        if (loginRequest.getEmail() == null || loginRequest.getEmail().trim().isEmpty())
+            throw new BadRequestException("Email không được bỏ trống");
+        if (userRepository.existsByEmail(loginRequest.getEmail()))
+            throw new BadRequestException("Email đã được đăng ký.");
         User user = User.builder()
                 .username(loginRequest.getUsername())
                 .password(passwordEncoder.encode(loginRequest.getPassword()))

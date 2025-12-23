@@ -20,5 +20,18 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: publicmail711@gmail.com
+    password: jfvx debw cobv grpi
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+app:
+  base-url: http://localhost:8080
 jwt:
   signerKey: "f267b9918f787ae56447c9311ee8804e87cb512171fbe28a88ae4bd631ab3450"

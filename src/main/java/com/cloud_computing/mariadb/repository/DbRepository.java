@@ -1,4 +1,4 @@
-package com.cloud_computing.mariadb.responsitory;
+package com.cloud_computing.mariadb.repository;
 
 import com.cloud_computing.mariadb.entity.Db;
 import org.springframework.data.jpa.repository.JpaRepository;

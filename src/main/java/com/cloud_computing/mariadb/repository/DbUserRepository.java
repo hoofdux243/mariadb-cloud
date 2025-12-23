@@ -1,7 +1,6 @@
-package com.cloud_computing.mariadb.responsitory;
+package com.cloud_computing.mariadb.repository;
 
 import com.cloud_computing.mariadb.entity.DbUser;
-import org.aspectj.apache.bcel.classfile.Module;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

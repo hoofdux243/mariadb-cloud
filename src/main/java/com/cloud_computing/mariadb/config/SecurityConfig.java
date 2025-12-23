@@ -29,6 +29,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST,"/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/databases/invitations/accept").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())

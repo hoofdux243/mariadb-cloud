@@ -1,12 +1,13 @@
 package com.cloud_computing.mariadb.service.impl;
 
 import com.cloud_computing.mariadb.dto.DbDTO;
+import com.cloud_computing.mariadb.dto.DbMemberDTO;
 import com.cloud_computing.mariadb.entity.*;
 import com.cloud_computing.mariadb.entity.enums.DbRole;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
 import com.cloud_computing.mariadb.exception.UnauthorizedException;
-import com.cloud_computing.mariadb.responsitory.*;
+import com.cloud_computing.mariadb.repository.*;
 import com.cloud_computing.mariadb.service.DbService;
 import com.cloud_computing.mariadb.util.SecurityUtils;
 import lombok.AccessLevel;
@@ -15,11 +16,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +39,11 @@ public class DbServiceImpl implements DbService {
     UserRepository userRepository;
     @Autowired
     ProjectRepository projectRepository;
+    @Autowired
+    JavaMailSender mailSender;
+    @Autowired
+    JWTService jwtService;
+
     private static final String PASSWORD_CHARS =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int PASSWORD_LENGTH = 16;
@@ -45,6 +54,10 @@ public class DbServiceImpl implements DbService {
 
     @Value("${spring.datasource.secondary.jdbc-url}")
     String mariadbUrl;
+
+    @Value("${app.base-url}")
+    String baseUrl;
+
 
     @Override
     @Transactional
@@ -132,7 +145,7 @@ public class DbServiceImpl implements DbService {
     @Override
     public DbDTO getDb(Long id) {
         User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
-        DbMember dbm = dbMemberRepository.findByIdAndUser_Id(id,user.getId()).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
+        DbMember dbm = dbMemberRepository.findByDb_IdAndUser_Id(id,user.getId()).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
         DbUser dbu = dbUserRepository.findByUser_IdAndDb_Id(user.getId(),id).orElseThrow(() -> new UnauthorizedException("Không tìm thấy database credential."));
 
         return DbDTO.builder()
@@ -160,7 +173,7 @@ public class DbServiceImpl implements DbService {
         User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user"));
         Db db = dbRepository.findById(id).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
 
-        DbMember dbm = dbMemberRepository.findByIdAndUser_Id(id, user.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này."));
+        DbMember dbm = dbMemberRepository.findByDb_IdAndUser_Id(id, user.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này."));
         if (!DbRole.OWNER.name().equals(dbm.getRole()))
             throw new UnauthorizedException("Bạn không có quyền xóa database này.");
 
@@ -179,6 +192,64 @@ public class DbServiceImpl implements DbService {
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }
+    }
+
+    @Override
+    public void sendInvitation(Long dbId, DbMemberDTO dbMemberDTO) {
+        User currentUser = userRepository.findByUsername(SecurityUtils.getUsername())
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy user"));
+
+        Db db = dbRepository.findById(dbId)
+                .orElseThrow(() -> new ResourceNotFoundException("Database không tồn tại"));
+
+        DbMember currentMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentUser.getId())
+                .orElseThrow(() -> new UnauthorizedException("Bạn không có quyền mời members ở database này."));
+
+        if (!"OWNER".equals(currentMember.getRole()) && !"ADMIN".equals(currentMember.getRole())) {
+            throw new UnauthorizedException("Chỉ OWNER/ADMIN mới có quyền mời members");
+        }
+
+        User invitedUser = userRepository.findByEmail(dbMemberDTO.getEmail()).orElse(null);
+        if(invitedUser != null){
+            boolean isMember = dbMemberRepository.existsByDb_IdAndUser_Id(dbId, invitedUser.getId());
+            if(isMember)
+                throw new BadRequestException("User này đã là member của database.");
+        }
+
+        String token = jwtService.generateInvitationToken(dbId, dbMemberDTO.getEmail(), dbMemberDTO.getRole());
+        String invitationLink = baseUrl + "/mariadb/api/dbs/invitations/accept?token=" + token;
+        sendInvitationEmail(dbMemberDTO.getEmail(), db.getName(), currentMember.getUser().getName(), invitationLink);
+    }
+
+    @Override
+    public void acceptInvitation(String token) {
+        Map<String, Object> claims = jwtService.parseInvitationToken(token);
+        Long dbId = (Long) claims.get("dbId");
+        String email = (String) claims.get("email");
+        String role = (String) claims.get("role");
+
+        User currentUser = userRepository.findByUsername(SecurityUtils.getUsername())
+                .orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
+
+        if (!currentUser.getEmail().equals(email)) {
+            throw new BadRequestException("Email không khớp với lời mời.");
+        }
+
+        Db db = dbRepository.findById(dbId)
+                .orElseThrow(() -> new ResourceNotFoundException("Database không tồn tại."));
+
+        boolean isMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentUser.getId()).isPresent();
+        if (isMember) {
+            throw new BadRequestException("Bạn đã là member của database này.");
+        }
+
+        DbMember newMember = DbMember.builder()
+                .db(db)
+                .user(currentUser)
+                .role(role)
+                .build();
+
+        dbMemberRepository.save(newMember);
     }
 
     private void dropDatabaseOnMariaDb(String dbName){
@@ -277,5 +348,27 @@ public class DbServiceImpl implements DbService {
 
     private String buildConnectionString(String host, int port, String dbName, String username, String password) {
         return String.format("jdbc:mariadb://%s:%d/%s?user=%s&password=%s", host, port, dbName, username, password);
+    }
+
+    private void sendInvitationEmail(String toEmail, String dbName, String inviterName, String invitationLink) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("Lời mời truy cập sử dụng database: " + dbName);
+            message.setText(String.format(
+                    "Xin chào,\n\n" +
+                            "%s đã mời bạn truy cập database '%s'.\n\n" +
+                            "Click vào đường link để đồng ý:\n" +
+                            "%s\n\n" +
+                            "Lời mời này sẽ hết hạn trong vòng 24h.\n\n" +
+                            "Trân trọng,\n" +
+                            "MariaDB Cloud",
+                    inviterName, dbName, invitationLink
+            ));
+
+            mailSender.send(message);
+        } catch (Exception e) {
+            throw new RuntimeException("Gửi email thất bại: " + e.getMessage());
+        }
     }
 }

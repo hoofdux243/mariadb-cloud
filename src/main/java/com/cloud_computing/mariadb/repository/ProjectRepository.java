@@ -1,8 +1,6 @@
-package com.cloud_computing.mariadb.responsitory;
+package com.cloud_computing.mariadb.repository;
 
-import com.cloud_computing.mariadb.dto.ProjectDTO;
 import com.cloud_computing.mariadb.entity.Project;
-import com.cloud_computing.mariadb.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

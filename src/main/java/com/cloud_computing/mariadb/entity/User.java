@@ -28,6 +28,9 @@ public class User {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "email", nullable = false)
+    private String email;
+
     @ColumnDefault("'USER'")
     @Lob
     @Column(name = "role")

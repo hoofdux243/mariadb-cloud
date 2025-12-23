@@ -1,9 +1,11 @@
 package com.cloud_computing.mariadb.controller;
 
 import com.cloud_computing.mariadb.dto.DbDTO;
+import com.cloud_computing.mariadb.dto.DbMemberDTO;
 import com.cloud_computing.mariadb.dto.response.APIResponse;
 import com.cloud_computing.mariadb.dto.response.APIResponseMessage;
 import com.cloud_computing.mariadb.entity.Db;
+import com.cloud_computing.mariadb.service.DbMemberService;
 import com.cloud_computing.mariadb.service.DbService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 public class DbController {
     @Autowired
     DbService dbService;
+    @Autowired
+    DbMemberService dbMemberService;
 
     @PostMapping
     ResponseEntity<?> createDb(@RequestBody DbDTO dbDTO) {
@@ -55,4 +59,37 @@ public class DbController {
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.NO_CONTENT);    }
 
+    @GetMapping("/{dbId}/members")
+    ResponseEntity<?> findAllMembersByDbId(@PathVariable Long dbId) {
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(dbMemberService.getDbMembersByProjectId(dbId))
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+    }
+
+    @PostMapping("/{dbId}/invite")
+    public ResponseEntity<?> inviteMember(
+            @PathVariable Long dbId,
+            @RequestBody DbMemberDTO request) {
+
+        dbService.sendInvitation(dbId, request);
+        APIResponse apiResponse = APIResponse.builder().code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_MAIL.getMessage())
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+    }
+
+    @GetMapping("/invitations/accept")
+    public ResponseEntity<?> acceptInvitation(
+            @RequestParam String token) {
+
+        dbService.acceptInvitation(token);
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_JOIN.getMessage())
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+    }
 }

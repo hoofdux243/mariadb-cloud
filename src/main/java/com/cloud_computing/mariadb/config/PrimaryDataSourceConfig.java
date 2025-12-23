@@ -21,7 +21,7 @@ import java.util.Map;
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(
-        basePackages = "com.cloud_computing.mariadb.responsitory", // Package chứa các Repository
+        basePackages = "com.cloud_computing.mariadb.repository", // Package chứa các Repository
         entityManagerFactoryRef = "primaryEntityManagerFactory",
         transactionManagerRef = "primaryTransactionManager"
 )

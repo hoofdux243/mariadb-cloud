@@ -5,21 +5,18 @@ import com.cloud_computing.mariadb.entity.Project;
 import com.cloud_computing.mariadb.entity.User;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
-import com.cloud_computing.mariadb.exception.UnauthorizedException;
-import com.cloud_computing.mariadb.responsitory.DbRepository;
-import com.cloud_computing.mariadb.responsitory.ProjectRepository;
-import com.cloud_computing.mariadb.responsitory.UserRepository;
+import com.cloud_computing.mariadb.repository.DbRepository;
+import com.cloud_computing.mariadb.repository.ProjectRepository;
+import com.cloud_computing.mariadb.repository.UserRepository;
 import com.cloud_computing.mariadb.service.ProjectService;
 import com.cloud_computing.mariadb.util.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
