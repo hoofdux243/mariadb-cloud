@@ -214,7 +214,7 @@ public class DbServiceImpl implements DbService {
                 throw new BadRequestException("User này đã là member của database.");
         }
 
-        String token = jwtService.generateInvitationToken(dbId, dbMemberDTO.getEmail(), dbMemberDTO.getRole());
+        String token = jwtService.generateInvitationToken(dbId, dbMemberDTO.getEmail(), dbMemberDTO.getRole(), db.getName(), currentUser.getName());
         String invitationLink =frontendUrl + "/invite?token=" + token;
         sendInvitationEmail(dbMemberDTO.getEmail(), db.getName(), currentMember.getUser().getName(), invitationLink);
     }

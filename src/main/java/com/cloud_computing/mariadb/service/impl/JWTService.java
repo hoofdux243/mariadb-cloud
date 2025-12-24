@@ -46,7 +46,7 @@ public class JWTService {
         }
     }
 
-    public String generateInvitationToken(Long dbId, String email, String role) {
+    public String generateInvitationToken(Long dbId, String email, String role, String dbName, String inviterName) {
         try {
             // 1. Tạo HMAC signer
             JWSSigner signer = new MACSigner(SIGN_KEY.getBytes());
@@ -57,6 +57,8 @@ public class JWTService {
                     .claim("dbId", dbId)
                     .claim("email", email)
                     .claim("role", role)
+                    .claim("dbName", dbName)
+                    .claim("inviterName", inviterName)
                     .issueTime(new Date())
                     .expirationTime(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) // 24h
                     .build();
