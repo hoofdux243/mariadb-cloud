@@ -12,6 +12,6 @@ public interface DbService {
     DbDTO getDb(Long id);
     void deleteDb(Long id);
     void sendInvitation(Long dbId, DbMemberDTO dbMemberDTO);
-    void acceptInvitation(String token);
+    void acceptInvitation(DbMemberDTO dbMemberDTO);
 
 }

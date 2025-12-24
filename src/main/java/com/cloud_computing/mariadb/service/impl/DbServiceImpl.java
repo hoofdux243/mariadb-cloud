@@ -75,7 +75,7 @@ public class DbServiceImpl implements DbService {
 
         String username = String.format("%s_%s", request.getName(), user.getUsername());
         String password = generateRandomPassword();
-        createUserOnMariaDb(request.getName(), username, password);
+        createUserOnMariaDb(request.getName(), username, password, DbRole.OWNER);
         Db db = dbRepository.save(Db.builder()
                 .project(project)
                 .name(request.getName())
@@ -217,17 +217,22 @@ public class DbServiceImpl implements DbService {
         }
 
         String token = jwtService.generateInvitationToken(dbId, dbMemberDTO.getEmail(), dbMemberDTO.getRole());
-        String invitationLink = baseUrl + "/mariadb/api/dbs/invitations/accept?token=" + token;
+        String invitationLink = baseUrl + "frontend url" + token;
         sendInvitationEmail(dbMemberDTO.getEmail(), db.getName(), currentMember.getUser().getName(), invitationLink);
     }
 
     @Override
-    public void acceptInvitation(String token) {
-        Map<String, Object> claims = jwtService.parseInvitationToken(token);
-        Long dbId = (Long) claims.get("dbId");
-        String email = (String) claims.get("email");
-        String role = (String) claims.get("role");
+    public void acceptInvitation(DbMemberDTO dbMemberDTO) {
+        Long dbId = dbMemberDTO.getDbId();
+        String email = dbMemberDTO.getEmail();
+        String roleStr = dbMemberDTO.getRole();
 
+        DbRole role;
+        try {
+            role = DbRole.valueOf(roleStr);
+        }catch (IllegalArgumentException e){
+            throw new BadRequestException("Role không hợp lệ.");
+        }
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername())
                 .orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
 
@@ -243,13 +248,25 @@ public class DbServiceImpl implements DbService {
             throw new BadRequestException("Bạn đã là member của database này.");
         }
 
-        DbMember newMember = DbMember.builder()
-                .db(db)
-                .user(currentUser)
-                .role(role)
-                .build();
+        try {
+            String dbUsername = String.format("%s_%s", db.getName(), currentUser.getUsername());
+            String dbPassword = generateRandomPassword();
 
-        dbMemberRepository.save(newMember);
+            createUserOnMariaDb(db.getName(), dbUsername, dbPassword, role);
+            dbUserRepository.save(DbUser.builder()
+                    .db(db)
+                    .user(currentUser)
+                    .username(dbUsername)
+                    .password(dbPassword)
+                    .build());
+            dbMemberRepository.save(DbMember.builder()
+                    .db(db)
+                    .user(currentUser)
+                    .role(role.name())
+                    .build());
+        }catch (Exception e){
+            throw new RuntimeException("Không thể tham gia database: " + e.getMessage());
+        }
     }
 
     private void dropDatabaseOnMariaDb(String dbName){
@@ -311,17 +328,18 @@ public class DbServiceImpl implements DbService {
             String sql = String.format("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", dbName);
             mariadbJdbcTemplate.execute(sql);
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException("Tạo database thất bại: " + e.getMessage());
         }
     }
 
-    private void createUserOnMariaDb(String dbName, String username, String password){
+    private void createUserOnMariaDb(String dbName, String username, String password, DbRole role){
         try {
             mariadbJdbcTemplate.execute(String.format("CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'", username, password));
-            mariadbJdbcTemplate.execute(String.format("GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%'", dbName, username));
+            String grantSql = role.getGrantStatement(dbName, username);
+            mariadbJdbcTemplate.execute(grantSql);
             mariadbJdbcTemplate.execute("FLUSH PRIVILEGES");
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException("Tạo user thất bại: " + e.getMessage());
         }
     }
 

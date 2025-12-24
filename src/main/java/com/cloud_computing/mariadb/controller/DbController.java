@@ -4,6 +4,7 @@ import com.cloud_computing.mariadb.dto.DbDTO;
 import com.cloud_computing.mariadb.dto.DbMemberDTO;
 import com.cloud_computing.mariadb.dto.response.APIResponse;
 import com.cloud_computing.mariadb.dto.response.APIResponseMessage;
+import com.cloud_computing.mariadb.dto.response.AuthResponse;
 import com.cloud_computing.mariadb.entity.Db;
 import com.cloud_computing.mariadb.service.DbMemberService;
 import com.cloud_computing.mariadb.service.DbService;
@@ -81,11 +82,10 @@ public class DbController {
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 
-    @GetMapping("/invitations/accept")
+    @PostMapping("/invitations/accept")
     public ResponseEntity<?> acceptInvitation(
-            @RequestParam String token) {
-
-        dbService.acceptInvitation(token);
+            @RequestBody DbMemberDTO dbMemberDTO) {
+        dbService.acceptInvitation(dbMemberDTO);
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.OK.value())
                 .message(APIResponseMessage.SUCCESSFULLY_JOIN.getMessage())
