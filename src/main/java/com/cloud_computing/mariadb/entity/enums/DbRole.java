@@ -6,7 +6,6 @@ import lombok.Getter;
 public enum DbRole {
     OWNER, ADMIN, READWRITE, READONLY;
 
-
     public String getGrantStatement(String dbName, String username) {
         switch (this) {
             case OWNER:

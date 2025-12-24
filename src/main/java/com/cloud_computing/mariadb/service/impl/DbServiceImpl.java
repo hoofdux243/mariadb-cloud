@@ -215,7 +215,7 @@ public class DbServiceImpl implements DbService {
         }
 
         String token = jwtService.generateInvitationToken(dbId, dbMemberDTO.getEmail(), dbMemberDTO.getRole());
-        String invitationLink =frontendUrl + "/invite/projectId/dbId?token=" + token;
+        String invitationLink =frontendUrl + "/invite?token=" + token;
         sendInvitationEmail(dbMemberDTO.getEmail(), db.getName(), currentMember.getUser().getName(), invitationLink);
     }
 
