@@ -112,7 +112,7 @@ public class DbServiceImpl implements DbService {
 
     @Override
     public List<DbDTO> getDbsByProjectId(Long projectId) {
-        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         List<Db> dbs = dbRepository.findAllByProject_Id(projectId);
         return dbs.stream().map(
                 db -> {
@@ -127,7 +127,7 @@ public class DbServiceImpl implements DbService {
 
     @Override
     public List<DbDTO> getDbs() {
-        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         List<DbMember> dbms = dbMemberRepository.findAllByUser_Id(user.getId());
         return dbms.stream()
                 .map(dbm ->{
@@ -142,7 +142,7 @@ public class DbServiceImpl implements DbService {
 
     @Override
     public DbDTO getDb(Long id) {
-        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user."));
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         DbMember dbm = dbMemberRepository.findByDb_IdAndUser_Id(id,user.getId()).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
         DbUser dbu = dbUserRepository.findByUser_IdAndDb_Id(user.getId(),id).orElseThrow(() -> new UnauthorizedException("Không tìm thấy database credential."));
 
@@ -168,7 +168,7 @@ public class DbServiceImpl implements DbService {
     @Override
     @Transactional
     public void deleteDb(Long id) {
-        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new BadRequestException("Không tìm thấy user"));
+        User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         Db db = dbRepository.findById(id).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
 
         DbMember dbm = dbMemberRepository.findByDb_IdAndUser_Id(id, user.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này."));
@@ -195,7 +195,7 @@ public class DbServiceImpl implements DbService {
     @Override
     public void sendInvitation(Long dbId, DbMemberDTO dbMemberDTO) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername())
-                .orElseThrow(() -> new BadRequestException("Không tìm thấy user"));
+                .orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
 
         Db db = dbRepository.findById(dbId)
                 .orElseThrow(() -> new ResourceNotFoundException("Database không tồn tại"));
@@ -298,28 +298,7 @@ public class DbServiceImpl implements DbService {
         }
     }
 
-//
-//    private void revokeAllPrivileges(String dbName) {
-//        try {
-//            String getUsersSql = String.format(
-//                    "SELECT DISTINCT User FROM mysql.db WHERE Db = '%s'",
-//                    dbName
-//            );
-//            List<String> users = mariadbJdbcTemplate.queryForList(getUsersSql, String.class);
-//
-//            for (String user : users) {
-//                String revokeSql = String.format(
-//                        "REVOKE ALL PRIVILEGES ON `%s`.* FROM '%s'@'%%'",
-//                        dbName, user
-//                );
-//                mariadbJdbcTemplate.execute(revokeSql);
-//            }
-//            mariadbJdbcTemplate.execute("FLUSH PRIVILEGES");
-//        } catch (Exception e) {
-//            throw new RuntimeException("Revoke quyền không thành công: " + e.getMessage());
-//        }
-//
-//    }
+
 
     private void createDbOnMariaDb(String dbName){
         try {

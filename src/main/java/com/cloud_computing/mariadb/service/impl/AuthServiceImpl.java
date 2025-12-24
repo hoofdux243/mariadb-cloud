@@ -4,6 +4,7 @@ import com.cloud_computing.mariadb.dto.UserDTO;
 import com.cloud_computing.mariadb.dto.response.AuthResponse;
 import com.cloud_computing.mariadb.entity.User;
 import com.cloud_computing.mariadb.exception.BadRequestException;
+import com.cloud_computing.mariadb.exception.UnauthorizedException;
 import com.cloud_computing.mariadb.repository.UserRepository;
 import com.cloud_computing.mariadb.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(UserDTO loginRequest) {
-        User user = userRepository.findByUsername(loginRequest.getUsername().trim()).orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng"));
+        User user = userRepository.findByUsername(loginRequest.getUsername().trim()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         if(!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())){
             throw new BadRequestException("Mật khẩu không đúng!");
         }

@@ -92,4 +92,26 @@ public class DbController {
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
+
+    @PatchMapping("/{dbId}/members/{memberId}")
+    public ResponseEntity<?> updateMemberRole(@PathVariable Long dbId,
+                                              @PathVariable Long memberId,
+                                              @RequestBody String role) {
+        dbMemberService.updateMemberRole(dbId, memberId, role);
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_UPDATED.getMessage())
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{dbId}/members/{memberId}")
+    public ResponseEntity<?> deleteMember(@PathVariable Long dbId, @PathVariable Long memberId) {
+        dbMemberService.deleteMember(dbId, memberId);
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.NO_CONTENT.value())
+                .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.NO_CONTENT);
+    }
 }
