@@ -31,6 +31,7 @@ public class JWTService {
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .subject(user.getUsername())
                 .claim("name", user.getName())
+                .claim("email", user.getEmail())
                 .issuer("mariadb.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()))
