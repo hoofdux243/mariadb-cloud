@@ -55,10 +55,8 @@ public class DbServiceImpl implements DbService {
     @Value("${spring.datasource.secondary.jdbc-url}")
     String mariadbUrl;
 
-    @Value("${app.base-url}")
-    String baseUrl;
-
-
+    @Value("${app.frontend-url}")
+    String frontendUrl;
     @Override
     @Transactional
     public DbDTO createDb(DbDTO request) {
@@ -217,7 +215,7 @@ public class DbServiceImpl implements DbService {
         }
 
         String token = jwtService.generateInvitationToken(dbId, dbMemberDTO.getEmail(), dbMemberDTO.getRole());
-        String invitationLink = baseUrl + "frontend url" + token;
+        String invitationLink =frontendUrl + "/invite/projectId/dbId?token=" + token;
         sendInvitationEmail(dbMemberDTO.getEmail(), db.getName(), currentMember.getUser().getName(), invitationLink);
     }
 

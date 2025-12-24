@@ -33,5 +33,6 @@ spring:
             enable: true
 app:
   base-url: http://localhost:8080
+  frontend-url: http://localhost:5173
 jwt:
   signerKey: "f267b9918f787ae56447c9311ee8804e87cb512171fbe28a88ae4bd631ab3450"
