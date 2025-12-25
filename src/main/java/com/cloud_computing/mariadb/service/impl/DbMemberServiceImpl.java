@@ -122,7 +122,7 @@ public class DbMemberServiceImpl implements DbMemberService {
         Db db = dbRepository.findById(dbId)
                 .orElseThrow(() -> new ResourceNotFoundException("Database không tồn tại."));
 
-        DbUser dbUser = dbUserRepository.findByUser_IdAndDb_Id(currentMember.getUser().getId(), dbId)
+        DbUser dbUser = dbUserRepository.findByUser_IdAndDb_Id(targetMember.getUser().getId(), dbId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user credential."));
         try{
             revokeAllPrivileges(db.getName(), dbUser.getUsername());
