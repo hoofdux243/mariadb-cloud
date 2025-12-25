@@ -96,8 +96,8 @@ public class DbController {
     @PatchMapping("/{dbId}/members/{memberId}")
     public ResponseEntity<?> updateMemberRole(@PathVariable Long dbId,
                                               @PathVariable Long memberId,
-                                              @RequestBody String role) {
-        dbMemberService.updateMemberRole(dbId, memberId, role);
+                                              @RequestBody DbMemberDTO dbMemberDTO) {
+        dbMemberService.updateMemberRole(dbId, memberId, dbMemberDTO);
         APIResponse apiResponse = APIResponse.builder()
                 .code(HttpStatus.OK.value())
                 .message(APIResponseMessage.SUCCESSFULLY_UPDATED.getMessage())

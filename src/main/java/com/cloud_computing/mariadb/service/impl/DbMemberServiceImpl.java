@@ -65,23 +65,24 @@ public class DbMemberServiceImpl implements DbMemberService {
 
     @Override
     @Transactional
-    public void updateMemberRole(Long dbId, Long memberId, String role) {
+    public void updateMemberRole(Long dbId, Long memberId, DbMemberDTO dbMemberDTO) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
-        DbMember currentMember = dbMemberRepository.findById(memberId).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập vào database này."));
+        DbMember currentMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentUser.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập vào database này."));
+        DbMember targetMember = dbMemberRepository.findById(memberId).orElseThrow(() -> new BadRequestException("Không tìm thấy member."));
         if (!DbRole.OWNER.name().equals(currentMember.getRole()))
             throw new UnauthorizedException("Chỉ người sở hữu mới có quyền thay đổi role của thành viên.");
         DbRole newRole;
         try {
-            newRole = DbRole.valueOf(role);
+            newRole = DbRole.valueOf(dbMemberDTO.getRole());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Role không hợp lệ: " + role);
+            throw new BadRequestException("Role không hợp lệ: " + dbMemberDTO.getRole());
         }
-        if (currentUser.getId().equals(currentMember.getUser().getId()))
+        if (currentUser.getId().equals(targetMember.getUser().getId()))
             throw new BadRequestException("Bạn không thể thay đổi role của chính mình.");
         if (newRole == DbRole.OWNER)
             throw new BadRequestException("Không thể cấp role OWNER cho members khác.");
-        DbMember targetMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentMember.getUser().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Member không tồn tại trong database này."));
+//        DbMember targetMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentMember.getUser().getId())
+//                .orElseThrow(() -> new ResourceNotFoundException("Member không tồn tại trong database này."));
         Db db = dbRepository.findById(dbId)
                 .orElseThrow(() -> new ResourceNotFoundException("Database không tồn tại."));
 
@@ -103,15 +104,14 @@ public class DbMemberServiceImpl implements DbMemberService {
     public void deleteMember(Long dbId, Long memberId) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         DbMember currentMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentUser.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này."));
+        DbMember targetMember = dbMemberRepository.findById(memberId).orElseThrow(() -> new BadRequestException("Không tìm thấy member."));
         if (!DbRole.OWNER.name().equals(currentMember.getRole()) &&
                 !DbRole.ADMIN.name().equals(currentMember.getRole())) {
             throw new UnauthorizedException("Chỉ OWNER/ADMIN mới có quyền xóa members.");
         }
-        if (currentUser.getId().equals(currentMember.getUser().getId())) {
+        if (currentUser.getId().equals(targetMember.getUser().getId())) {
             throw new BadRequestException("Bạn không thể xóa chính mình khỏi database. Hãy liên hệ OWNER.");
         }
-        DbMember targetMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentMember.getUser().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Member không tồn tại trong database này."));
         if (DbRole.OWNER.name().equals(targetMember.getRole())) {
             throw new BadRequestException("Không thể xóa OWNER khỏi database.");
         }
