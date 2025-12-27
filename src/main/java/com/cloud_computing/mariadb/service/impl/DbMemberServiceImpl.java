@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.service.impl;
 
+import com.cloud_computing.mariadb.annotation.AuditLog;
 import com.cloud_computing.mariadb.dto.DbMemberDTO;
 import com.cloud_computing.mariadb.entity.Db;
 import com.cloud_computing.mariadb.entity.DbMember;
@@ -65,6 +66,7 @@ public class DbMemberServiceImpl implements DbMemberService {
 
     @Override
     @Transactional
+    @AuditLog(action = "UPDATE_MEMBER_ROLE", description = "cập nhật vai trò thành viên")
     public void updateMemberRole(Long dbId, Long memberId, DbMemberDTO dbMemberDTO) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         DbMember currentMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentUser.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập vào database này."));
@@ -86,7 +88,7 @@ public class DbMemberServiceImpl implements DbMemberService {
         Db db = dbRepository.findById(dbId)
                 .orElseThrow(() -> new ResourceNotFoundException("Database không tồn tại."));
 
-        DbUser dbUser = dbUserRepository.findByUser_IdAndDb_Id(currentMember.getUser().getId(), dbId)
+        DbUser dbUser = dbUserRepository.findByUser_IdAndDb_Id(targetMember.getUser().getId(), dbId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user credential."));
         try{
             revokeAllPrivileges(db.getName(), dbUser.getUsername());
@@ -101,6 +103,8 @@ public class DbMemberServiceImpl implements DbMemberService {
     }
 
     @Override
+    @Transactional
+    @AuditLog(action = "DELETE_MEMBER", description = "xóa thành viên")
     public void deleteMember(Long dbId, Long memberId) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         DbMember currentMember = dbMemberRepository.findByDb_IdAndUser_Id(dbId, currentUser.getId()).orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này."));

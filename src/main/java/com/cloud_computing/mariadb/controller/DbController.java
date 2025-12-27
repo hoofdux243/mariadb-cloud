@@ -6,8 +6,10 @@ import com.cloud_computing.mariadb.dto.response.APIResponse;
 import com.cloud_computing.mariadb.dto.response.APIResponseMessage;
 import com.cloud_computing.mariadb.dto.response.AuthResponse;
 import com.cloud_computing.mariadb.entity.Db;
+import com.cloud_computing.mariadb.service.AuditLogService;
 import com.cloud_computing.mariadb.service.DbMemberService;
 import com.cloud_computing.mariadb.service.DbService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,11 +17,11 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/dbs")
+@RequiredArgsConstructor()
 public class DbController {
-    @Autowired
-    DbService dbService;
-    @Autowired
-    DbMemberService dbMemberService;
+    final DbService dbService;
+    final DbMemberService dbMemberService;
+    final AuditLogService auditLogService;
 
     @PostMapping
     ResponseEntity<?> createDb(@RequestBody DbDTO dbDTO) {
@@ -113,5 +115,18 @@ public class DbController {
                 .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping("/{dbId}/logs")
+    public ResponseEntity<?> getDbLogs(
+            @PathVariable Long dbId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size){
+        APIResponse apiResponse = APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(auditLogService.getDbLogs(dbId, page, size))
+                .build();
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 }

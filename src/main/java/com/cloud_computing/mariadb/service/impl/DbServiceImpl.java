@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.service.impl;
 
+import com.cloud_computing.mariadb.annotation.AuditLog;
 import com.cloud_computing.mariadb.dto.DbDTO;
 import com.cloud_computing.mariadb.dto.DbMemberDTO;
 import com.cloud_computing.mariadb.entity.*;
@@ -59,6 +60,7 @@ public class DbServiceImpl implements DbService {
     String frontendUrl;
     @Override
     @Transactional
+    @AuditLog(action = "CREATE_DATABASE", description = "tạo database")
     public DbDTO createDb(DbDTO request) {
         if(!projectRepository.existsByUser_UsernameAndId(SecurityUtils.getUsername(), request.getProjectId())){
             throw new UnauthorizedException("Không có quyền tạo database trong project của người khác.");
@@ -167,6 +169,7 @@ public class DbServiceImpl implements DbService {
 
     @Override
     @Transactional
+    @AuditLog(action = "DELETE_DATABASE", description = "xóa database")
     public void deleteDb(Long id) {
         User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
         Db db = dbRepository.findById(id).orElseThrow(() -> new BadRequestException("Không tìm thấy database."));
@@ -193,6 +196,8 @@ public class DbServiceImpl implements DbService {
     }
 
     @Override
+    @Transactional
+    @AuditLog(action = "INVITE_MEMBER", description = "mời thành viên")
     public void sendInvitation(Long dbId, DbMemberDTO dbMemberDTO) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername())
                 .orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
@@ -220,6 +225,8 @@ public class DbServiceImpl implements DbService {
     }
 
     @Override
+    @Transactional
+    @AuditLog(action = "ACCEPT_INVITATION", description = "chấp nhận tham gia")
     public void acceptInvitation(DbMemberDTO dbMemberDTO) {
         Long dbId = dbMemberDTO.getDbId();
         String email = dbMemberDTO.getEmail();
