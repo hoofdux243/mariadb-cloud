@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.controller;
 
+import com.cloud_computing.mariadb.dto.BackupDTO;
 import com.cloud_computing.mariadb.dto.DbDTO;
 import com.cloud_computing.mariadb.dto.DbMemberDTO;
 import com.cloud_computing.mariadb.dto.response.APIResponse;
@@ -7,10 +8,12 @@ import com.cloud_computing.mariadb.dto.response.APIResponseMessage;
 import com.cloud_computing.mariadb.dto.response.AuthResponse;
 import com.cloud_computing.mariadb.entity.Db;
 import com.cloud_computing.mariadb.service.AuditLogService;
+import com.cloud_computing.mariadb.service.BackupService;
 import com.cloud_computing.mariadb.service.DbMemberService;
 import com.cloud_computing.mariadb.service.DbService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +25,7 @@ public class DbController {
     final DbService dbService;
     final DbMemberService dbMemberService;
     final AuditLogService auditLogService;
+    final BackupService backupService;
 
     @PostMapping
     ResponseEntity<?> createDb(@RequestBody DbDTO dbDTO) {
@@ -129,4 +133,6 @@ public class DbController {
                 .build();
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
+
+
 }
