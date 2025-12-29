@@ -14,11 +14,12 @@ import java.util.Map;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TableDataDTO {
-    String tableName;
+    String name;
     List<String> columns;
     List<Map<String, Object>> rows;
-    long totalRows;
-    int page;
-    int pageSize;
+    Long totalRows;
+    Long totalColumns;
+    Integer page;
+    Integer pageSize;
 }
 

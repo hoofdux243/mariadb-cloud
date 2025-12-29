@@ -101,7 +101,7 @@ public class TableServiceImpl implements TableService {
     }
 
     @Override
-    public List<String> getTables(Long dbId) {
+    public List<TableDataDTO> getTables(Long dbId) {
         User currentUser = getCurrentUser();
         checkPermission(dbId, currentUser, DbRole.READONLY);
 
@@ -109,7 +109,50 @@ public class TableServiceImpl implements TableService {
         DbUser dbUser = getDbUser(currentUser.getId(), dbId);
 
         JdbcTemplate template = createJdbcTemplate(db, dbUser);
-        return template.queryForList("SHOW TABLES", String.class);
+        List<String> tableNames = template.queryForList("SHOW TABLES", String.class);
+
+        List<TableDataDTO> tableData = new ArrayList<>();
+
+        for (String tableName : tableNames) {
+            try {
+                // Lấy thông tin chi tiết từ information_schema
+                String sql = """
+                    SELECT 
+                        TABLE_NAME as name,
+                        TABLE_ROWS as totalRows,
+                        ENGINE as engine,
+                        TABLE_COLLATION as collation
+                    FROM information_schema.TABLES
+                    WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+                    """;
+
+                Map<String, Object> tableInfo = template.queryForMap(sql, db.getName(), tableName);
+
+                // Đếm số columns
+                String countColumnsSql = String.format("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s'",
+                        db.getName(), tableName);
+                Long totalColumns = template.queryForObject(countColumnsSql, Long.class);
+
+                // Build DTO
+                TableDataDTO dto = TableDataDTO.builder()
+                        .name((String) tableInfo.get("name"))
+                        .totalColumns(totalColumns)
+                        .build();
+
+                tableData.add(dto);
+
+            } catch (Exception e) {
+
+                // Fallback: chỉ trả về tên bảng
+                tableData.add(TableDataDTO.builder()
+                        .name(tableName)
+                        .totalColumns(0L)
+                        .totalRows(0L)
+                        .build());
+            }
+        }
+
+        return tableData;
     }
 
     @Override
@@ -165,7 +208,7 @@ public class TableServiceImpl implements TableService {
         List<Map<String, Object>> rows = template.queryForList(dataSql);
 
         return TableDataDTO.builder()
-                .tableName(tableName)
+                .name(tableName)
                 .columns(columns)
                 .rows(rows)
                 .totalRows(totalRows != null ? totalRows : 0)

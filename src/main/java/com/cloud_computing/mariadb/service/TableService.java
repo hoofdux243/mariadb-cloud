@@ -13,7 +13,7 @@ public interface TableService {
     void alterTable(Long dbId, String tableName, TableAlterRequest request);
     void renameTable(Long dbId, String oldName, String newName);
     void dropTable(Long dbId, String tableName);
-    List<String> getTables(Long dbId);
+    List<TableDataDTO> getTables(Long dbId);
     public Map<String, Object> getTableStructure(Long dbId, String tableName);
     TableDataDTO getTableData(Long dbId, String tableName, int page, int pageSize);
 
