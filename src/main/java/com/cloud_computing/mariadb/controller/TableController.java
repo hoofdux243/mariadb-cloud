@@ -13,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/dbs/{dbId}/tables")
 @RequiredArgsConstructor
@@ -37,6 +40,45 @@ public class TableController {
         return ResponseEntity.ok(APIResponse.<Void>builder()
                 .code(HttpStatus.OK.value())
                 .message(APIResponseMessage.SUCCESSFULLY_UPDATED.getMessage())
+                .build());
+    }
+
+    @PatchMapping("/{tableName}/rename")
+    public ResponseEntity<?> renameTable(@PathVariable Long dbId, @PathVariable String tableName, @RequestParam String newName) {
+        tableService.renameTable(dbId, tableName, newName);
+        return ResponseEntity.ok(APIResponse.<Void>builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_UPDATED.getMessage())
+                .build());
+    }
+
+    @DeleteMapping("/{tableName}")
+    public ResponseEntity<?> deleteTable(@PathVariable Long dbId, @PathVariable String tableName) {
+        tableService.dropTable(dbId, tableName);
+        return ResponseEntity.ok(APIResponse.<Void>builder()
+                .code(HttpStatus.NO_CONTENT.value())
+                .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
+                .build());
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getTables(@PathVariable Long dbId) {
+        return ResponseEntity.ok(APIResponse.<List<String>>builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(tableService.getTables(dbId))
+                .build());
+    }
+
+    @GetMapping("/{tableName}/structure")
+    public ResponseEntity<?> getTableStructure(
+            @PathVariable Long dbId,
+            @PathVariable String tableName) {
+        Map<String, Object> structure = tableService.getTableStructure(dbId, tableName);
+        return ResponseEntity.ok(APIResponse.<Map<String, Object>>builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_RETRIEVED.getMessage())
+                .data(structure)
                 .build());
     }
 }

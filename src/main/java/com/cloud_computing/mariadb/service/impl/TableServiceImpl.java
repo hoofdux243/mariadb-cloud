@@ -29,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -43,16 +45,6 @@ public class TableServiceImpl implements TableService {
     @Autowired
     @Qualifier("secondaryJdbcTemplate")
     JdbcTemplate mariadbJdbcTemplate;
-
-    @Override
-    public void importSql(Long dbId, String sqlContent) {
-
-    }
-
-    @Override
-    public void importSqlFile(Long dbId, MultipartFile file) {
-
-    }
 
     @Override
     @Transactional
@@ -85,7 +77,63 @@ public class TableServiceImpl implements TableService {
         }
     }
 
+    @Override
+    public void renameTable(Long dbId, String oldName, String newName) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READWRITE);
 
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+        template.execute(String.format("RENAME TABLE `%s` TO `%s`", oldName, newName));
+    }
+
+    @Override
+    public void dropTable(Long dbId, String tableName) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READWRITE);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+        template.execute(String.format("DROP TABLE IF EXISTS `%s`", tableName));
+    }
+
+    @Override
+    public List<String> getTables(Long dbId) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READONLY);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+        return template.queryForList("SHOW TABLES", String.class);
+    }
+
+    @Override
+    public Map<String, Object> getTableStructure(Long dbId, String tableName) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READONLY);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+
+        Map<String, Object> result = new HashMap<>();
+
+        String descSql = String.format("DESCRIBE `%s`", tableName);
+        result.put("columns", template.queryForList(descSql));
+
+        String indexSql = String.format("SHOW INDEX FROM `%s`", tableName);
+        result.put("indexes", template.queryForList(indexSql));
+
+        String createSql = String.format("SHOW CREATE TABLE `%s`", tableName);
+        result.put("createStatement", template.queryForMap(createSql).get("Create Table"));
+
+        return result;
+    }
     private void checkPermission(Long dbId, User user, DbRole minRole) {
         DbMember member = dbMemberRepository.findByDb_IdAndUser_Id(dbId, user.getId())
                 .orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này"));
@@ -139,26 +187,54 @@ public class TableServiceImpl implements TableService {
 
         List<String> columnDefs = new ArrayList<>();
         List<String> primaryKeys = new ArrayList<>();
+        List<String> foreignKeys = new ArrayList<>();
 
         for (ColumnCreateDTO col : request.getColumns()) {
             StringBuilder colDef = new StringBuilder("  `").append(col.getName()).append("` ");
             colDef.append(parseColumnType(col));
             columnDefs.add(colDef.toString());
 
+            // Collect Primary Keys
             if (col.getConstraints() != null &&
                     col.getConstraints().toLowerCase().contains("primary key")) {
                 primaryKeys.add(col.getName());
+            }
+
+            // ✅ Collect Foreign Keys
+            if (col.getForeignKeyTable() != null && col.getForeignKeyColumn() != null) {
+                StringBuilder fkDef = new StringBuilder();
+                fkDef.append("  CONSTRAINT `fk_").append(request.getTableName())
+                        .append("_").append(col.getName()).append("` ");
+                fkDef.append("FOREIGN KEY (`").append(col.getName()).append("`) ");
+                fkDef.append("REFERENCES `").append(col.getForeignKeyTable()).append("` ");
+                fkDef.append("(`").append(col.getForeignKeyColumn()).append("`)");
+
+                if (col.getOnDelete() != null && !col.getOnDelete().isEmpty()) {
+                    fkDef.append(" ON DELETE ").append(col.getOnDelete().toUpperCase());
+                }
+                if (col.getOnUpdate() != null && !col.getOnUpdate().isEmpty()) {
+                    fkDef.append(" ON UPDATE ").append(col.getOnUpdate().toUpperCase());
+                }
+
+                foreignKeys.add(fkDef.toString());
             }
         }
 
         sql.append(String.join(",\n", columnDefs));
 
+        // Add PRIMARY KEY
         if (!primaryKeys.isEmpty()) {
             sql.append(",\n  PRIMARY KEY (");
             sql.append(String.join(", ", primaryKeys.stream()
                     .map(k -> "`" + k + "`")
                     .toArray(String[]::new)));
             sql.append(")");
+        }
+
+        // ✅ Add FOREIGN KEYs
+        if (!foreignKeys.isEmpty()) {
+            sql.append(",\n");
+            sql.append(String.join(",\n", foreignKeys));
         }
 
         sql.append("\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -174,6 +250,26 @@ public class TableServiceImpl implements TableService {
                 String sql = String.format("ALTER TABLE `%s` ADD COLUMN `%s` %s",
                         tableName, col.getName(), parseColumnType(col));
                 statements.add(sql);
+
+                // ✅ Add Foreign Key nếu có
+                if (col.getForeignKeyTable() != null && col.getForeignKeyColumn() != null) {
+                    StringBuilder fkSql = new StringBuilder();
+                    fkSql.append("ALTER TABLE `").append(tableName).append("` ");
+                    fkSql.append("ADD CONSTRAINT `fk_").append(tableName)
+                            .append("_").append(col.getName()).append("` ");
+                    fkSql.append("FOREIGN KEY (`").append(col.getName()).append("`) ");
+                    fkSql.append("REFERENCES `").append(col.getForeignKeyTable()).append("` ");
+                    fkSql.append("(`").append(col.getForeignKeyColumn()).append("`)");
+
+                    if (col.getOnDelete() != null && !col.getOnDelete().isEmpty()) {
+                        fkSql.append(" ON DELETE ").append(col.getOnDelete().toUpperCase());
+                    }
+                    if (col.getOnUpdate() != null && !col.getOnUpdate().isEmpty()) {
+                        fkSql.append(" ON UPDATE ").append(col.getOnUpdate().toUpperCase());
+                    }
+
+                    statements.add(fkSql.toString());
+                }
             }
         }
 

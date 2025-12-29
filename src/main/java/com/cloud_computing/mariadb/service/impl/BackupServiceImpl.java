@@ -90,24 +90,22 @@ public class BackupServiceImpl implements BackupService {
 
             tempFile = Paths.get(tempDir, fileName);
 
-            // ✅ PARSE MARIADB URL để lấy host và port
             String host = extractHostname(mariadbUrl);
             Integer port = extractPort(mariadbUrl);
 
 
-            // ✅ Thực hiện mysqldump kết nối tới MariaDB server
             ProcessBuilder pb = new ProcessBuilder(
                     "mysqldump",
-                    "-h", host,          // ← Host của MariaDB
-                    "-P", String.valueOf(port),          // ← Port của MariaDB
-                    "-u", mariadbUsername,  // ← Username MariaDB
+                    "-h", host,
+                    "-P", String.valueOf(port),
+                    "-u", mariadbUsername,
+                    "--skip-column-statistics",
                     "--single-transaction",
                     "--routines",
                     "--triggers",
-                    db.getName()         // ← Tên database user đã tạo
+                    db.getName()
             );
 
-            // ✅ Set password MariaDB
             Map<String, String> env = pb.environment();
             env.put("MYSQL_PWD", mariadbPassword);
 
@@ -116,7 +114,6 @@ public class BackupServiceImpl implements BackupService {
 
             Process process = pb.start();
 
-            // Đọc error stream
             StringBuilder errorOutput = new StringBuilder();
             try (BufferedReader errorReader = new BufferedReader(
                     new InputStreamReader(process.getErrorStream()))) {
@@ -141,7 +138,6 @@ public class BackupServiceImpl implements BackupService {
                 throw new RuntimeException("Backup file not created or empty");
             }
 
-            // Upload lên S3
             long fileSize = Files.size(tempFile);
 
             PutObjectRequest putRequest = PutObjectRequest.builder()

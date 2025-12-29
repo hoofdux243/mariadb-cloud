@@ -151,6 +151,7 @@ public class DbServiceImpl implements DbService {
         return DbDTO.builder()
                 .id(id)
                 .name(dbm.getDb().getName())
+                .role(dbm.getRole())
                 .projectName(dbm.getDb().getProject().getName())
                 .createdAt(dbm.getDb().getCreatedAt())
                 .credentialInfo(DbDTO.CredentialInfo.builder()

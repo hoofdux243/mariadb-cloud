@@ -19,4 +19,9 @@ public class ColumnCreateDTO {
     String defaultValue;
     String constraints;
     Integer length; //length varchar
+
+    String foreignKeyTable;
+    String foreignKeyColumn;
+    String onDelete;
+    String onUpdate;
 }

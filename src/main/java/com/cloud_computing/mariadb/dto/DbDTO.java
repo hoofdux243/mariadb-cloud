@@ -15,6 +15,7 @@ import java.time.Instant;
 public class DbDTO {
     Long id;
     String name;
+    String role;
     Long projectId;
     String projectName;
     Instant createdAt;
