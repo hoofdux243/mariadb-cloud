@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.controller;
 
+import com.cloud_computing.mariadb.dto.TableDataDTO;
 import com.cloud_computing.mariadb.dto.request.TableAlterRequest;
 import com.cloud_computing.mariadb.dto.request.TableCreateRequest;
 import com.cloud_computing.mariadb.dto.response.APIResponse;
@@ -81,4 +82,17 @@ public class TableController {
                 .data(structure)
                 .build());
     }
+
+    @GetMapping("/{tableName}/data")
+    public ResponseEntity<?> getTableData(@PathVariable Long dbId,
+                                      @PathVariable String tableName,
+                                      @RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(APIResponse.<TableDataDTO>builder()
+                .code(HttpStatus.OK.value())
+                .message("Lấy dữ liệu bảng thành công")
+                .data(tableService.getTableData(dbId, tableName, page, size))
+                .build());
+    }
+
 }

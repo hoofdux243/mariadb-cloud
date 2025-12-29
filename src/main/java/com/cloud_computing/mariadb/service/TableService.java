@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.service;
 
+import com.cloud_computing.mariadb.dto.TableDataDTO;
 import com.cloud_computing.mariadb.dto.request.TableAlterRequest;
 import com.cloud_computing.mariadb.dto.request.TableCreateRequest;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,4 +15,6 @@ public interface TableService {
     void dropTable(Long dbId, String tableName);
     List<String> getTables(Long dbId);
     public Map<String, Object> getTableStructure(Long dbId, String tableName);
+    TableDataDTO getTableData(Long dbId, String tableName, int page, int pageSize);
+
 }

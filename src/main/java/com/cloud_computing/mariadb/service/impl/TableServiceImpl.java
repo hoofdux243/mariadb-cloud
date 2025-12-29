@@ -2,6 +2,7 @@ package com.cloud_computing.mariadb.service.impl;
 
 import com.cloud_computing.mariadb.dto.ColumnCreateDTO;
 import com.cloud_computing.mariadb.dto.ColumnModifyDTO;
+import com.cloud_computing.mariadb.dto.TableDataDTO;
 import com.cloud_computing.mariadb.dto.request.TableAlterRequest;
 import com.cloud_computing.mariadb.dto.request.TableCreateRequest;
 import com.cloud_computing.mariadb.entity.Db;
@@ -134,6 +135,45 @@ public class TableServiceImpl implements TableService {
 
         return result;
     }
+
+    @Override
+    public TableDataDTO getTableData(Long dbId, String tableName, int page, int pageSize) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READONLY);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+
+        // Lấy tổng số rows
+        String countSql = String.format("SELECT COUNT(*) FROM `%s`", tableName);
+        Long totalRows = template.queryForObject(countSql, Long.class);
+
+        // Lấy tên columns
+        String descSql = String.format("DESCRIBE `%s`", tableName);
+        List<Map<String, Object>> columnInfo = template.queryForList(descSql);
+        List<String> columns = new ArrayList<>();
+        for (Map<String, Object> col : columnInfo) {
+            columns.add((String) col.get("Field"));
+        }
+
+        // Lấy data với phân trang
+        int offset = page * pageSize;
+        String dataSql = String.format("SELECT * FROM `%s` LIMIT %d OFFSET %d",
+                tableName, pageSize, offset);
+        List<Map<String, Object>> rows = template.queryForList(dataSql);
+
+        return TableDataDTO.builder()
+                .tableName(tableName)
+                .columns(columns)
+                .rows(rows)
+                .totalRows(totalRows != null ? totalRows : 0)
+                .page(page)
+                .pageSize(pageSize)
+                .build();
+    }
+
     private void checkPermission(Long dbId, User user, DbRole minRole) {
         DbMember member = dbMemberRepository.findByDb_IdAndUser_Id(dbId, user.getId())
                 .orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này"));

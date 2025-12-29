@@ -42,4 +42,4 @@ aws:
     region: us-east-1
     bucket-name: mariadb-bucket-123
 backup:
-  temp-dir: D:/mariadb/temp
+  temp-dir: ./temp
