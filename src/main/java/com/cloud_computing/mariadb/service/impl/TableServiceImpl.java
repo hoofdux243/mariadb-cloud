@@ -349,7 +349,7 @@ public class TableServiceImpl implements TableService {
     }
 
     @Override
-    public List<String> getTableColumns(Long dbId, String tableName) {
+    public List<Map<String,String>> getTableColumns(Long dbId, String tableName) {
         User currentUser = getCurrentUser();
         checkPermission(dbId, currentUser, DbRole.READONLY);
 
@@ -358,14 +358,22 @@ public class TableServiceImpl implements TableService {
         JdbcTemplate template = createJdbcTemplate(db, dbUser);
 
         String sql = """
-        SELECT COLUMN_NAME
+        SELECT 
+            COLUMN_NAME,
+            COLUMN_TYPE
         FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
         ORDER BY ORDINAL_POSITION
         """;
-
-        return template.queryForList(sql, String.class, db.getName(), tableName);
-
+        List<Map<String,Object>> columns = template.queryForList(sql, db.getName(), tableName);
+        return columns.stream()
+                .map(col -> {
+                    Map<String, String> result = new HashMap<>();
+                    result.put("name", (String) col.get("COLUMN_NAME"));
+                    result.put("type", (String) col.get("COLUMN_TYPE"));
+                    return result;
+                })
+                .collect(Collectors.toList());
     }
 
     private void checkPermission(Long dbId, User user, DbRole minRole) {

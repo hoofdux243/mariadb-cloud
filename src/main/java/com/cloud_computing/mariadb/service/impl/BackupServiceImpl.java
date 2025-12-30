@@ -351,13 +351,10 @@ public class BackupServiceImpl implements BackupService {
         JdbcTemplate template = new JdbcTemplate(dataSource);
 
 
-        // ✅ 1. TẮT FOREIGN KEY CHECKS
         template.execute("SET FOREIGN_KEY_CHECKS = 0");
 
-        // ✅ 2. XÓA TẤT CẢ OBJECTS HIỆN CÓ (TABLES, PROCEDURES, FUNCTIONS, TRIGGERS, EVENTS)
         dropAllDatabaseObjects(template, db.getName());
 
-        // ✅ 3. RESTORE TỪ FILE BACKUP
         BufferedReader reader = new BufferedReader(
                 new InputStreamReader(inputStream, StandardCharsets.UTF_8)
         );

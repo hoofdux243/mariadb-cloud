@@ -19,5 +19,5 @@ public interface TableService {
     void insertRow(Long dbId, String tableName, RowDTO request);
     void updateRow(Long dbId, String tableName, RowDTO request);
     void deleteRow(Long dbId, String tableName, RowDTO request);
-    List<String> getTableColumns(Long dbId, String tableName);
+    List<Map<String,String>> getTableColumns(Long dbId, String tableName);
 }
