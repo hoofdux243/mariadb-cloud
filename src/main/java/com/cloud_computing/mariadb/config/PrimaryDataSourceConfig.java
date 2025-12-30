@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.config;
 
+import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -35,7 +36,9 @@ public class PrimaryDataSourceConfig {
     @Bean(name = "primaryDataSource")
     @ConfigurationProperties(prefix = "spring.datasource.primary")
     public DataSource primaryDataSource() {
-        return DataSourceBuilder.create().build();
+        return DataSourceBuilder.create()
+                .type(HikariDataSource.class)
+                .build();
     }
 
     /**

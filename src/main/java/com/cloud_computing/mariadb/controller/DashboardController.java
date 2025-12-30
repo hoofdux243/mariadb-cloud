@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/dashboard")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class DashboardController {
     final DashboardService dashboardService;
 
-    @GetMapping
+    @GetMapping("/dashboard")
     public ResponseEntity<?> getDashboard() {
         DashboardDTO stats = dashboardService.getDashboard();
         return ResponseEntity.ok(APIResponse.<DashboardDTO>builder()
@@ -26,4 +26,10 @@ public class DashboardController {
                 .data(stats)
                 .build());
     }
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
+    }
+
+
 }
