@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.service;
 
+import com.cloud_computing.mariadb.dto.DashboardDTO;
 import com.cloud_computing.mariadb.dto.ProjectDTO;
 
 import java.util.List;
@@ -9,4 +10,5 @@ public interface ProjectService {
     void deleteProject(Long projectId);
     List<ProjectDTO> getProjects();
     ProjectDTO getProject(Long projectId);
+
 }

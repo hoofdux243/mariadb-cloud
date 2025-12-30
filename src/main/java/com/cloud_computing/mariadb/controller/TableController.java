@@ -130,4 +130,14 @@ public class TableController {
                 .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
                 .build());
     }
+
+    @GetMapping("/{tableName}/columns")
+    public ResponseEntity<?> getColumns(@PathVariable Long dbId,
+                                        @PathVariable String tableName){
+        return ResponseEntity.ok(APIResponse.<List<String>>builder()
+                .code(200)
+                .message("Lấy danh sách cột thành công")
+                .data(tableService.getTableColumns(dbId, tableName))
+                .build());
+    }
 }

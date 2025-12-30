@@ -1,18 +1,18 @@
 package com.cloud_computing.mariadb.service.impl;
 
 import com.cloud_computing.mariadb.annotation.AuditLog;
+import com.cloud_computing.mariadb.dto.DashboardDTO;
 import com.cloud_computing.mariadb.dto.ProjectDTO;
 import com.cloud_computing.mariadb.entity.Project;
 import com.cloud_computing.mariadb.entity.User;
 import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
 import com.cloud_computing.mariadb.exception.UnauthorizedException;
-import com.cloud_computing.mariadb.repository.DbRepository;
-import com.cloud_computing.mariadb.repository.ProjectRepository;
-import com.cloud_computing.mariadb.repository.UserRepository;
+import com.cloud_computing.mariadb.repository.*;
 import com.cloud_computing.mariadb.service.ProjectService;
 import com.cloud_computing.mariadb.util.SecurityUtils;
 import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,13 +24,12 @@ import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@RequiredArgsConstructor
 public class ProjectServiceImpl implements ProjectService {
-    @Autowired
-    UserRepository userRepository;
-    @Autowired
-    ProjectRepository projectRepository;
-    @Autowired
-    private DbRepository dbRepository;
+    final UserRepository userRepository;
+    final ProjectRepository projectRepository;
+    final DbRepository dbRepository;
+
 
     @Override
     @Transactional
@@ -56,7 +55,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void deleteProject(Long projectId) {
         Project project = projectRepository.findByUser_UsernameAndId(SecurityUtils.getUsername(), projectId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy project."));
-        if(dbRepository.existsByProject_Id(projectId))
+        if (dbRepository.existsByProject_Id(projectId))
             throw new AccessDeniedException("Phải xóa hết database trong project trước khi xóa project.");
         projectRepository.delete(project);
     }
@@ -78,11 +77,13 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectDTO getProject(Long projectId) {
-        Project project = projectRepository.findByUser_UsernameAndId(SecurityUtils.getUsername(),projectId).orElseThrow(() -> new BadRequestException("Không tìm thấy project."));
+        Project project = projectRepository.findByUser_UsernameAndId(SecurityUtils.getUsername(), projectId).orElseThrow(() -> new BadRequestException("Không tìm thấy project."));
         return ProjectDTO.builder()
                 .id(project.getId())
                 .name(project.getName())
                 .createdAt(project.getCreatedAt())
                 .build();
     }
+
+
 }

@@ -17,6 +17,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/dbs")
@@ -134,5 +135,15 @@ public class DbController {
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 
+    @PostMapping("/{dbId}/import")
+    public ResponseEntity<?> importSqlDump(
+            @PathVariable Long dbId,
+            @RequestParam("file") MultipartFile file) {
 
+        backupService.importSqlDump(dbId, file);
+        return ResponseEntity.ok(APIResponse.<Void>builder()
+                .code(200)
+                .message("Import SQL dump thành công")
+                .build());
+    }
 }

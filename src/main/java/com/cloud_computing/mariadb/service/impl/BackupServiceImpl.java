@@ -4,6 +4,7 @@ import com.cloud_computing.mariadb.annotation.AuditLog;
 import com.cloud_computing.mariadb.dto.BackupDTO;
 import com.cloud_computing.mariadb.entity.*;
 import com.cloud_computing.mariadb.entity.enums.DbRole;
+import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
 import com.cloud_computing.mariadb.exception.UnauthorizedException;
 import com.cloud_computing.mariadb.repository.*;
@@ -22,6 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -296,9 +298,45 @@ public class BackupServiceImpl implements BackupService {
         }
     }
 
-    /**
-     * ✅ EXECUTE SQL FILE STREAM
-     */
+    @Override
+    @Transactional
+    @AuditLog(action = "IMPORT_SQL", description = "Imported SQL dump file")
+    public void importSqlDump(Long dbId, MultipartFile dumpFile) {
+        validateDumpFile(dumpFile);
+
+        User currentUser = getCurrentUser();
+        Db db = dbRepository.findById(dbId)
+                .orElseThrow(() -> new ResourceNotFoundException("Database không tồn tại"));
+
+        checkPermission(dbId, currentUser, DbRole.READWRITE);
+
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+
+        try (InputStream inputStream = dumpFile.getInputStream()) {
+            executeSqlFile(db, dbUser, inputStream);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Import thất bại: " + e.getMessage(), e);
+        }
+    }
+
+    private void validateDumpFile(MultipartFile dumpFile) {
+        if (dumpFile == null || dumpFile.isEmpty()) {
+            throw new BadRequestException("File dump không được để trống");
+        }
+
+        String originalFilename = dumpFile.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".sql")) {
+            throw new BadRequestException("Chỉ chấp nhận file .sql");
+        }
+
+        // Check file size (100MB)
+        long maxSize = 100 * 1024 * 1024L;
+        if (dumpFile.getSize() > maxSize) {
+            throw new BadRequestException("File không được vượt quá 100MB");
+        }
+    }
+
     private void executeSqlFile(Db db, DbUser dbUser, InputStream inputStream) throws IOException {
         // ✅ CONNECT VÀO DATABASE CỤ THỂ
         String url = String.format("jdbc:mariadb://%s:%d/%s?allowMultiQueries=true",

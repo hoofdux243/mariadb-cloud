@@ -17,4 +17,5 @@ public interface DbMemberRepository extends JpaRepository<DbMember, Long> {
             "JOIN FETCH dm.user u " +
             "WHERE dm.db.id = :dbId")
     List<DbMember> findAllByDbIdWithUser(@Param("dbId") Long dbId);
+    Long countByUser_Id(Long userId);
 }

@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BackupRepository extends JpaRepository<Backup, Long> {
     Page<Backup> findByDb_IdOrderByCreatedAtDesc(Long dbId, Pageable pageable);
+    Long countByUser_Id(Long userId);
 }

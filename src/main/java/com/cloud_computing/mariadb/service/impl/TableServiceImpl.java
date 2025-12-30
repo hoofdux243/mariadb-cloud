@@ -348,6 +348,26 @@ public class TableServiceImpl implements TableService {
         }
     }
 
+    @Override
+    public List<String> getTableColumns(Long dbId, String tableName) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READONLY);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+
+        String sql = """
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+        ORDER BY ORDINAL_POSITION
+        """;
+
+        return template.queryForList(sql, String.class, db.getName(), tableName);
+
+    }
+
     private void checkPermission(Long dbId, User user, DbRole minRole) {
         DbMember member = dbMemberRepository.findByDb_IdAndUser_Id(dbId, user.getId())
                 .orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này"));

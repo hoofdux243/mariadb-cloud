@@ -319,11 +319,22 @@ public class DbServiceImpl implements DbService {
 
     private void createUserOnMariaDb(String dbName, String username, String password, DbRole role){
         try {
-            mariadbJdbcTemplate.execute(String.format("CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'", username, password));
+            String createUserSql = String.format(
+                    "CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'",
+                    username, password
+            );
+            mariadbJdbcTemplate.execute(createUserSql);
+            mariadbJdbcTemplate.execute("FLUSH PRIVILEGES");
             String grantSql = role.getGrantStatement(dbName, username);
             mariadbJdbcTemplate.execute(grantSql);
             mariadbJdbcTemplate.execute("FLUSH PRIVILEGES");
+
         } catch (Exception e) {
+            try {
+                mariadbJdbcTemplate.execute(String.format("DROP USER IF EXISTS '%s'@'%%'", username));
+                mariadbJdbcTemplate.execute("FLUSH PRIVILEGES");
+            } catch (Exception rollbackEx) {
+            }
             throw new RuntimeException("Tạo user thất bại: " + e.getMessage());
         }
     }
