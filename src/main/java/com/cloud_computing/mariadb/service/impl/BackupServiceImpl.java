@@ -2,17 +2,11 @@ package com.cloud_computing.mariadb.service.impl;
 
 import com.cloud_computing.mariadb.annotation.AuditLog;
 import com.cloud_computing.mariadb.dto.BackupDTO;
-import com.cloud_computing.mariadb.entity.Backup;
-import com.cloud_computing.mariadb.entity.Db;
-import com.cloud_computing.mariadb.entity.DbMember;
-import com.cloud_computing.mariadb.entity.User;
+import com.cloud_computing.mariadb.entity.*;
 import com.cloud_computing.mariadb.entity.enums.DbRole;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
 import com.cloud_computing.mariadb.exception.UnauthorizedException;
-import com.cloud_computing.mariadb.repository.BackupRepository;
-import com.cloud_computing.mariadb.repository.DbMemberRepository;
-import com.cloud_computing.mariadb.repository.DbRepository;
-import com.cloud_computing.mariadb.repository.UserRepository;
+import com.cloud_computing.mariadb.repository.*;
 import com.cloud_computing.mariadb.service.BackupService;
 import com.cloud_computing.mariadb.util.SecurityUtils;
 import lombok.AccessLevel;
@@ -24,6 +18,8 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -34,13 +30,16 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -50,6 +49,7 @@ public class BackupServiceImpl implements BackupService {
     final BackupRepository backupRepository;
     final DbRepository dbRepository;
     final DbMemberRepository dbMemberRepository;
+    final DbUserRepository dbUserRepository;
     final UserRepository userRepository;
     final S3Client s3Client;
     @Value("${spring.datasource.secondary.jdbc-url}")
@@ -63,7 +63,6 @@ public class BackupServiceImpl implements BackupService {
 
     @Value("${backup.temp-dir}")
     String tempDir;
-
 
 
     @Override
@@ -99,10 +98,18 @@ public class BackupServiceImpl implements BackupService {
                     "-h", host,
                     "-P", String.valueOf(port),
                     "-u", mariadbUsername,
+                    "-p" + mariadbPassword,
+
                     "--skip-column-statistics",
                     "--single-transaction",
                     "--routines",
                     "--triggers",
+                    "--events",
+                    "--add-drop-table",
+                    "--complete-insert",
+                    "--hex-blob",
+                    "--default-character-set=utf8mb4",
+
                     db.getName()
             );
 
@@ -216,10 +223,11 @@ public class BackupServiceImpl implements BackupService {
             throw new ResourceNotFoundException("File backup không tồn tại trên S3.");
         }
     }
+
     @Override
     @Transactional
     @AuditLog(action = "DELETE_BACKUP", description = "Deleted backup")
-    public void deleteBackup(Long backupId) {
+    public void deleteBackup(Long dbId, Long backupId) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername())
                 .orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập."));
 
@@ -250,6 +258,234 @@ public class BackupServiceImpl implements BackupService {
             throw new RuntimeException("Không thể xóa backup: " + e.getMessage());
         }
     }
+
+    @Override
+    @Transactional
+    @AuditLog(action = "RESTORE_BACKUP", description = "Restored database from backup")
+    public void restoreBackup(Long dbId, Long backupId) {
+        User currentUser = getCurrentUser();
+
+        // Lấy backup info
+        Backup backup = backupRepository.findById(backupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Backup không tồn tại"));
+
+        Db db = backup.getDb();
+
+        // Check permission (chỉ OWNER/ADMIN)
+        checkPermission(db.getId(), currentUser, DbRole.ADMIN);
+
+        DbUser dbUser = getDbUser(currentUser.getId(), db.getId());
+
+        try {
+            // ✅ DOWNLOAD FILE TỪ S3 DÙNG S3Client CÓ SẴN
+            GetObjectRequest getRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(backup.getS3Key())
+                    .build();
+
+            InputStream inputStream = s3Client.getObject(getRequest);
+
+            // Restore vào database
+            executeSqlFile(db, dbUser, inputStream);
+
+
+        } catch (S3Exception e) {
+            throw new ResourceNotFoundException("File backup không tồn tại trên S3");
+        } catch (Exception e) {
+            throw new RuntimeException("Restore thất bại: " + e.getMessage());
+        }
+    }
+
+    /**
+     * ✅ EXECUTE SQL FILE STREAM
+     */
+    private void executeSqlFile(Db db, DbUser dbUser, InputStream inputStream) throws IOException {
+        // ✅ CONNECT VÀO DATABASE CỤ THỂ
+        String url = String.format("jdbc:mariadb://%s:%d/%s?allowMultiQueries=true",
+                db.getHostname(), db.getPort(), db.getName());
+
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("org.mariadb.jdbc.Driver");
+        dataSource.setUrl(url);
+        dataSource.setUsername(dbUser.getUsername());
+        dataSource.setPassword(dbUser.getPassword());
+
+        JdbcTemplate template = new JdbcTemplate(dataSource);
+
+
+        // ✅ 1. TẮT FOREIGN KEY CHECKS
+        template.execute("SET FOREIGN_KEY_CHECKS = 0");
+
+        // ✅ 2. XÓA TẤT CẢ OBJECTS HIỆN CÓ (TABLES, PROCEDURES, FUNCTIONS, TRIGGERS, EVENTS)
+        dropAllDatabaseObjects(template, db.getName());
+
+        // ✅ 3. RESTORE TỪ FILE BACKUP
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(inputStream, StandardCharsets.UTF_8)
+        );
+
+        StringBuilder sqlBuilder = new StringBuilder();
+        String line;
+        int executedStatements = 0;
+        int failedStatements = 0;
+
+        while ((line = reader.readLine()) != null) {
+            line = line.trim();
+
+            // Skip comments và empty lines
+            if (line.isEmpty() || line.startsWith("--")) {
+                continue;
+            }
+
+            // Xử lý /*!... */
+            if (line.startsWith("/*!")) {
+                String processed = line.replaceAll("/\\*!\\d+\\s*", "").replaceAll("\\s*\\*/;?$", ";");
+                if (processed.trim().isEmpty() || processed.trim().equals(";")) {
+                    continue;
+                }
+                line = processed;
+            }
+
+            sqlBuilder.append(line).append(" ");
+
+            if (line.endsWith(";")) {
+                String sql = sqlBuilder.toString().trim();
+
+                try {
+                    template.execute(sql);
+                    executedStatements++;
+                } catch (Exception e) {
+                    failedStatements++;
+                }
+
+                sqlBuilder.setLength(0);
+            }
+        }
+        template.execute("SET FOREIGN_KEY_CHECKS = 1");
+        reader.close();
+        List<String> newTables = template.queryForList("SHOW TABLES", String.class);
+    }
+
+
+    private JdbcTemplate createJdbcTemplate(Db db, DbUser dbUser) {
+        String url = String.format("jdbc:mariadb://%s:%d/%s?allowMultiQueries=true",
+                db.getHostname(), db.getPort(), db.getName());
+
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("org.mariadb.jdbc.Driver");
+        dataSource.setUrl(url);
+        dataSource.setUsername(dbUser.getUsername());
+        dataSource.setPassword(dbUser.getPassword());
+
+        return new JdbcTemplate(dataSource);
+    }
+
+
+    private void dropAllDatabaseObjects(JdbcTemplate template, String dbName) {
+        try {
+
+            List<String> tables = template.queryForList("SHOW TABLES", String.class);
+
+            for (String tableName : tables) {
+                try {
+                    template.execute("DROP TABLE IF EXISTS `" + tableName + "`");
+                } catch (Exception e) {
+                }
+            }
+
+            List<Map<String, Object>> procedures = template.queryForList(
+                    "SELECT ROUTINE_NAME FROM information_schema.ROUTINES " +
+                            "WHERE ROUTINE_SCHEMA = ? AND ROUTINE_TYPE = 'PROCEDURE'",
+                    dbName);
+
+
+            for (Map<String, Object> proc : procedures) {
+                String procName = (String) proc.get("ROUTINE_NAME");
+                try {
+                    template.execute("DROP PROCEDURE IF EXISTS `" + procName + "`");
+                } catch (Exception e) {
+                }
+            }
+
+            List<Map<String, Object>> functions = template.queryForList(
+                    "SELECT ROUTINE_NAME FROM information_schema.ROUTINES " +
+                            "WHERE ROUTINE_SCHEMA = ? AND ROUTINE_TYPE = 'FUNCTION'",
+                    dbName);
+
+
+            for (Map<String, Object> func : functions) {
+                String funcName = (String) func.get("ROUTINE_NAME");
+                try {
+                    template.execute("DROP FUNCTION IF EXISTS `" + funcName + "`");
+                } catch (Exception e) {
+                }
+            }
+
+            List<Map<String, Object>> triggers = template.queryForList(
+                    "SELECT TRIGGER_NAME FROM information_schema.TRIGGERS " +
+                            "WHERE TRIGGER_SCHEMA = ?",
+                    dbName);
+
+
+            for (Map<String, Object> trig : triggers) {
+                String trigName = (String) trig.get("TRIGGER_NAME");
+                try {
+                    template.execute("DROP TRIGGER IF EXISTS `" + trigName + "`");
+                } catch (Exception e) {
+                }
+            }
+
+            List<Map<String, Object>> events = template.queryForList(
+                    "SELECT EVENT_NAME FROM information_schema.EVENTS " +
+                            "WHERE EVENT_SCHEMA = ?",
+                    dbName);
+
+
+            for (Map<String, Object> event : events) {
+                String eventName = (String) event.get("EVENT_NAME");
+                try {
+                    template.execute("DROP EVENT IF EXISTS `" + eventName + "`");
+                } catch (Exception e) {
+                }
+            }
+
+
+        } catch (Exception e) {
+            throw new RuntimeException("Cannot drop database objects: " + e.getMessage());
+        }
+    }
+
+
+    private void checkPermission(Long dbId, User user, DbRole minRole) {
+        DbMember member = dbMemberRepository.findByDb_IdAndUser_Id(dbId, user.getId())
+                .orElseThrow(() -> new UnauthorizedException("Bạn không có quyền truy cập database này"));
+
+        DbRole userRole = DbRole.valueOf(member.getRole());
+
+        if (minRole == DbRole.ADMIN) {
+            if (userRole != DbRole.OWNER && userRole != DbRole.ADMIN) {
+                throw new UnauthorizedException("Chỉ OWNER/ADMIN mới có quyền restore");
+            }
+        } else if (minRole == DbRole.READWRITE) {
+            if (userRole != DbRole.OWNER && userRole != DbRole.ADMIN && userRole != DbRole.READWRITE) {
+                throw new UnauthorizedException("Bạn không có quyền thực hiện thao tác này");
+            }
+        }
+    }
+
+
+    private User getCurrentUser() {
+        return userRepository.findByUsername(SecurityUtils.getUsername())
+                .orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập"));
+    }
+
+
+    private DbUser getDbUser(Long userId, Long dbId) {
+        return dbUserRepository.findByUser_IdAndDb_Id(userId, dbId)
+                .orElseThrow(() -> new UnauthorizedException("Không tìm thấy credentials"));
+    }
+
+
     private BackupDTO toDTO(Backup backup) {
         return BackupDTO.builder()
                 .id(backup.getId())
@@ -263,7 +499,8 @@ public class BackupServiceImpl implements BackupService {
                 .createdAt(backup.getCreatedAt())
                 .build();
     }
-    private String extractHostname(String url){
+
+    private String extractHostname(String url) {
         String[] parts = url.split("//")[1].split(":");
         return parts[0];
     }

@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.controller;
 
+import com.cloud_computing.mariadb.dto.RowDTO;
 import com.cloud_computing.mariadb.dto.TableDataDTO;
 import com.cloud_computing.mariadb.dto.request.TableAlterRequest;
 import com.cloud_computing.mariadb.dto.request.TableCreateRequest;
@@ -34,10 +35,10 @@ public class TableController {
     }
 
     @PatchMapping("/{tableName}")
-    public ResponseEntity<?> alterTable(@PathVariable String tableName,
+    public ResponseEntity<?> alterColumn(@PathVariable String tableName,
                                         @PathVariable Long dbId,
                                         @Valid @RequestBody TableAlterRequest dto) {
-        tableService.alterTable(dbId, tableName, dto);
+        tableService.alterColumn(dbId, tableName, dto);
         return ResponseEntity.ok(APIResponse.<Void>builder()
                 .code(HttpStatus.OK.value())
                 .message(APIResponseMessage.SUCCESSFULLY_UPDATED.getMessage())
@@ -95,4 +96,38 @@ public class TableController {
                 .build());
     }
 
+    @PostMapping("/{tableName}/rows")
+    public ResponseEntity<?> insertRow(
+            @PathVariable Long dbId,
+            @PathVariable String tableName,
+            @Valid @RequestBody RowDTO request) {
+        tableService.insertRow(dbId, tableName, request);
+        return ResponseEntity.ok(APIResponse.<Void>builder()
+                .code(HttpStatus.CREATED.value())
+                .message(APIResponseMessage.SUCCESSFULLY_CREATED.getMessage())
+                .build());
+    }
+
+    @PatchMapping("/{tableName}/rows")
+    public ResponseEntity<?> updateRow(
+            @PathVariable Long dbId,
+            @PathVariable String tableName,
+            @Valid @RequestBody RowDTO request) {
+        tableService.updateRow(dbId, tableName, request);
+        return ResponseEntity.ok(APIResponse.<Void>builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_UPDATED.getMessage())
+                .build());
+    }
+    @DeleteMapping("/{tableName}/rows")
+    public ResponseEntity<?> deleteRow(
+            @PathVariable Long dbId,
+            @PathVariable String tableName,
+            @RequestBody RowDTO request) {
+        tableService.deleteRow(dbId, tableName, request);
+        return ResponseEntity.ok(APIResponse.<Void>builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
+                .build());
+    }
 }

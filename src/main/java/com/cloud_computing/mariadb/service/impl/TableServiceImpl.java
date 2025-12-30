@@ -1,7 +1,9 @@
 package com.cloud_computing.mariadb.service.impl;
 
+import com.cloud_computing.mariadb.annotation.AuditLog;
 import com.cloud_computing.mariadb.dto.ColumnCreateDTO;
 import com.cloud_computing.mariadb.dto.ColumnModifyDTO;
+import com.cloud_computing.mariadb.dto.RowDTO;
 import com.cloud_computing.mariadb.dto.TableDataDTO;
 import com.cloud_computing.mariadb.dto.request.TableAlterRequest;
 import com.cloud_computing.mariadb.dto.request.TableCreateRequest;
@@ -10,6 +12,7 @@ import com.cloud_computing.mariadb.entity.DbMember;
 import com.cloud_computing.mariadb.entity.DbUser;
 import com.cloud_computing.mariadb.entity.User;
 import com.cloud_computing.mariadb.entity.enums.DbRole;
+import com.cloud_computing.mariadb.exception.BadRequestException;
 import com.cloud_computing.mariadb.exception.ResourceNotFoundException;
 import com.cloud_computing.mariadb.exception.UnauthorizedException;
 import com.cloud_computing.mariadb.repository.DbMemberRepository;
@@ -27,12 +30,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +51,7 @@ public class TableServiceImpl implements TableService {
 
     @Override
     @Transactional
+    @AuditLog(action = "CREATE_TABLE", description = "tạo bảng")
     public void createTable(Long dbId, TableCreateRequest dto) {
         User currentUser = userRepository.findByUsername(SecurityUtils.getUsername())
                 .orElseThrow(() -> new UnauthorizedException("Bạn cần đăng nhập"));
@@ -63,7 +66,8 @@ public class TableServiceImpl implements TableService {
 
     @Override
     @Transactional
-    public void alterTable(Long dbId, String tableName, TableAlterRequest request) {
+    @AuditLog(action = "ALTER_COLUMN", description = "chỉnh sửa cột")
+    public void alterColumn(Long dbId, String tableName, TableAlterRequest request) {
         User currentUser = getCurrentUser();
         checkPermission(dbId, currentUser, DbRole.READWRITE);
 
@@ -79,6 +83,8 @@ public class TableServiceImpl implements TableService {
     }
 
     @Override
+    @Transactional
+    @AuditLog(action = "RENAME_TABLE", description = "đổi tên bảng")
     public void renameTable(Long dbId, String oldName, String newName) {
         User currentUser = getCurrentUser();
         checkPermission(dbId, currentUser, DbRole.READWRITE);
@@ -90,6 +96,8 @@ public class TableServiceImpl implements TableService {
     }
 
     @Override
+    @Transactional
+    @AuditLog(action = "DELETE_TABLE", description = "xóa bảng")
     public void dropTable(Long dbId, String tableName) {
         User currentUser = getCurrentUser();
         checkPermission(dbId, currentUser, DbRole.READWRITE);
@@ -215,6 +223,129 @@ public class TableServiceImpl implements TableService {
                 .page(page)
                 .pageSize(pageSize)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    @AuditLog(action = "INSERT_ROW", description = "thêm dòng")
+    public void insertRow(Long dbId, String tableName, RowDTO request) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READWRITE);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+
+        List<Map<String, Object>> data = request.getData();
+
+        if (data == null || data.isEmpty()) {
+            throw new BadRequestException("Danh sách data không được rỗng");
+        }
+
+        Map<String, Object> firstRow = data.get(0);
+        String columns = firstRow.keySet().stream()
+                .map(col -> "`" + col + "`")
+                .collect(Collectors.joining(", "));
+
+        String placeholders = firstRow.keySet().stream()
+                .map(col -> "?")
+                .collect(Collectors.joining(", "));
+
+        String sql = String.format("INSERT INTO `%s` (%s) VALUES (%s)",
+                tableName, columns, placeholders);
+
+        List<Object[]> batchArgs = data.stream()
+                .map(row -> row.values().toArray())
+                .collect(Collectors.toList());
+
+        template.batchUpdate(sql, batchArgs);
+    }
+
+    @Override
+    @Transactional
+    @AuditLog(action = "UPDATE_ROW", description = "chỉnh sửa dòng")
+    public void updateRow(Long dbId, String tableName, RowDTO request) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READWRITE);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+
+        List<Long> ids = request.getIds();
+        List<Map<String, Object>> data = request.getData();
+
+        if (ids == null || ids.isEmpty()) {
+            throw new BadRequestException("Danh sách IDs không được rỗng");
+        }
+        if (data == null || data.isEmpty()) {
+            throw new BadRequestException("Danh sách data không được rỗng");
+        }
+        if (ids.size() != data.size()) {
+            throw new BadRequestException("Số lượng IDs và data phải bằng nhau");
+        }
+
+        int updatedCount = 0;
+
+        for (int i = 0; i < ids.size(); i++) {
+            Long id = ids.get(i);
+            Map<String, Object> rowData = data.get(i);
+
+            if (rowData.isEmpty()) {
+                continue;
+            }
+
+            String setClause = rowData.keySet().stream()
+                    .map(col -> "`" + col + "` = ?")
+                    .collect(Collectors.joining(", "));
+
+            String sql = String.format("UPDATE `%s` SET %s WHERE `id` = ?",
+                    tableName, setClause);
+
+            List<Object> values = new ArrayList<>(rowData.values());
+            values.add(id);
+
+            int affected = template.update(sql, values.toArray());
+
+            if (affected == 0) {
+            } else {
+                updatedCount++;
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    @AuditLog(action = "DELETE_ROW", description = "xóa dòng")
+    public void deleteRow(Long dbId, String tableName, RowDTO request) {
+        User currentUser = getCurrentUser();
+        checkPermission(dbId, currentUser, DbRole.READWRITE);
+
+        Db db = getDb(dbId);
+        DbUser dbUser = getDbUser(currentUser.getId(), dbId);
+        JdbcTemplate template = createJdbcTemplate(db, dbUser);
+
+        List<Long> ids = request.getIds();
+
+        if (ids == null || ids.isEmpty()) {
+            throw new BadRequestException("Danh sách IDs không được rỗng");
+        }
+
+        // DELETE FROM table WHERE id IN (?, ?, ?)
+        String placeholders = ids.stream()
+                .map(id -> "?")
+                .collect(Collectors.joining(", "));
+
+        String sql = String.format("DELETE FROM `%s` WHERE `id` IN (%s)",
+                tableName, placeholders);
+
+        Object[] values = ids.toArray();
+
+        int rowsAffected = template.update(sql, values);
+
+        if (rowsAffected == 0) {
+            throw new ResourceNotFoundException("Không tìm thấy row nào với IDs đã cho");
+        }
     }
 
     private void checkPermission(Long dbId, User user, DbRole minRole) {

@@ -50,11 +50,20 @@ public class BackupController {
     }
 
     @DeleteMapping("/{backupId}")
-    public ResponseEntity<?> deleteBackup(@PathVariable Long backupId) {
-        backupService.deleteBackup(backupId);
+    public ResponseEntity<?> deleteBackup(@PathVariable Long backupId, @PathVariable Long dbId) {
+        backupService.deleteBackup(dbId, backupId);
         return new ResponseEntity<>(APIResponse.builder()
                 .code(HttpStatus.NO_CONTENT.value())
                 .message(APIResponseMessage.SUCCESSFULLY_DELETED.getMessage())
                 .build(),HttpStatus.NO_CONTENT);
+    }
+
+    @PostMapping("/{backupId}")
+    public ResponseEntity<?> restoreBackup(@PathVariable Long backupId, @PathVariable Long dbId) {
+        backupService.restoreBackup(dbId, backupId);
+        return new ResponseEntity<>(APIResponse.builder()
+                .code(HttpStatus.OK.value())
+                .message(APIResponseMessage.SUCCESSFULLY_UPDATED.getMessage())
+                .build(), HttpStatus.OK);
     }
 }

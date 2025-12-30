@@ -38,6 +38,7 @@ jwt:
   signerKey: "f267b9918f787ae56447c9311ee8804e87cb512171fbe28a88ae4bd631ab3450"
 aws:
   s3:
+  
     region: us-east-1
     bucket-name: mariadb-bucket-123
 backup:

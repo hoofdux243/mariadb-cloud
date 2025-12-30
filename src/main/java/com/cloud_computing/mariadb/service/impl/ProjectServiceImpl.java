@@ -1,5 +1,6 @@
 package com.cloud_computing.mariadb.service.impl;
 
+import com.cloud_computing.mariadb.annotation.AuditLog;
 import com.cloud_computing.mariadb.dto.ProjectDTO;
 import com.cloud_computing.mariadb.entity.Project;
 import com.cloud_computing.mariadb.entity.User;
@@ -16,6 +17,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,6 +33,7 @@ public class ProjectServiceImpl implements ProjectService {
     private DbRepository dbRepository;
 
     @Override
+    @Transactional
     public ProjectDTO createProject(ProjectDTO projectDTO) {
         User user = userRepository.findByUsername(SecurityUtils.getUsername()).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
         if (projectDTO.getName() == null || projectDTO.getName().trim().isEmpty()) {

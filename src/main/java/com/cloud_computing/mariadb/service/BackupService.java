@@ -9,5 +9,6 @@ public interface BackupService {
     BackupDTO createBackup(Long dbId, String description);
     Page<BackupDTO> getBackups(Long dbId, int page, int size);
     Resource downloadBackup(Long backupId);
-    void deleteBackup(Long backupId);
+    void deleteBackup(Long dbId, Long backupId);
+    void restoreBackup(Long dbId, Long backupId);
 }
