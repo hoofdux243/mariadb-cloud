@@ -2,15 +2,14 @@ server:
   port: 8080
   servlet:
     context-path: /mariadb
-  address: 0.0.0.0
 spring:
   application:
     name: mariadb
   datasource:
     primary:
-      jdbc-url: "jdbc:mysql://database-1.cm8qkmiwivrg.us-east-1.rds.amazonaws.com:3306/coredb"
-      username: admin
-      password: 12345678
+      jdbc-url: ${PRIMARY_JDBC_URL}
+      username: ${PRIMARY_JDBC_USERNAME}
+      password: ${PRIMARY_JDBC_PASSWORD}
       driver-class-name: com.mysql.cj.jdbc.Driver
       hikari:
         pool-name: primary-pool
@@ -20,9 +19,9 @@ spring:
         max-lifetime: 1800000
         connection-timeout: 30000
     secondary:
-      jdbc-url: "jdbc:mariadb://database-2.cm8qkmiwivrg.us-east-1.rds.amazonaws.com:3306/"
-      username: admin
-      password: 12345678
+      jdbc-url: ${SECONDARY_JDBC_URL}
+      username: ${SECONDARY_JDBC_USERNAME}
+      password: ${SECONDARY_JDBC_PASSWORD}
       driver-class-name: org.mariadb.jdbc.Driver
       hikari:
         pool-name: secondary-pool
@@ -38,8 +37,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: publicmail711@gmail.com
-    password: jfvx debw cobv grpi
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -47,14 +46,18 @@ spring:
           starttls:
             enable: true
 app:
-  base-url: http://localhost:8080
-  frontend-url: http://localhost:5173
+  base-url: ${APP_BASE_URL}
+  frontend-url: ${FRONTEND_URL}
+#  base-url: https://localhost:8080
+#  frontend-url:
 jwt:
   signerKey: "f267b9918f787ae56447c9311ee8804e87cb512171fbe28a88ae4bd631ab3450"
 aws:
   s3:
-
-    region: us-east-1
-    bucket-name: mariadb-bucket-123
+    aws_access_key_id: ${AWS_ACCESS_KEY_ID}
+    aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+    aws_session_token: ${AWS_SESSION_TOKEN}
+    region: ${REGION}
+    bucket-name: ${BUCKET_NAME}
 backup:
   temp-dir: ./temp

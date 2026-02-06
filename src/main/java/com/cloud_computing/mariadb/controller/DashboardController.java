@@ -28,8 +28,6 @@ public class DashboardController {
     }
     @GetMapping("/health")
     public ResponseEntity<String> health() {
-        return ResponseEntity.ok("OK");
+        return ResponseEntity.ok("Web Server 001");
     }
-
-
 }

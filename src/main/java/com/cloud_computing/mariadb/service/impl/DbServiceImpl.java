@@ -44,6 +44,10 @@ public class DbServiceImpl implements DbService {
     JavaMailSender mailSender;
     @Autowired
     JWTService jwtService;
+    @Autowired
+    AuditLogRepository auditLogRepository;
+    @Autowired
+    BackupRepository backupRepository;
 
     private static final String PASSWORD_CHARS =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -183,6 +187,8 @@ public class DbServiceImpl implements DbService {
             throw new BadRequestException("Database không tồn tại.");
 
         try {
+            auditLogRepository.deleteAllByDb_Id(id);
+            backupRepository.deleteAllByDb_Id(id);
             dropDatabaseOnMariaDb(db.getName());
             dropAllUsersOnMariaDB(db.getName());
             List<DbMember> dbms = dbMemberRepository.findAllByDb_Id(id);

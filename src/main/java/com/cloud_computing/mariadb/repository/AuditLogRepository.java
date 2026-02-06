@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     Page<AuditLog> findByDb_IdOrderByCreatedAtDesc(Long dbId, Pageable pageable);
+    void deleteAllByDb_Id(Long dbId);
 }
